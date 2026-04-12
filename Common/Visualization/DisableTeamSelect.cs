@@ -90,7 +90,7 @@ internal class DisableTeamSelect : ModSystem
             if (Main.mouseLeft && Main.mouseLeftRelease && Main.teamCooldown == 0)
             {
                 Main.teamCooldown = Main.teamCooldownLen;
-                SoundEngine.PlaySound(12);
+                SoundEngine.PlaySound(SoundID.MenuTick);
                 //Main.player[Main.myPlayer].hostile = !Main.player[Main.myPlayer].hostile;
                 //NetMessage.SendData(30, -1, -1, null, Main.myPlayer);
                 bool hasGameStarted = ModContent.GetInstance<GameManager>().CurrentPhase == GameManager.Phase.Playing;
@@ -136,7 +136,7 @@ internal class DisableTeamSelect : ModSystem
                     else
                     {
                         Main.teamCooldown = Main.teamCooldownLen;
-                        SoundEngine.PlaySound(12);
+                        SoundEngine.PlaySound(SoundID.MenuTick);
                         Main.player[Main.myPlayer].team = i;
                         NetMessage.SendData(MessageID.PlayerTeam, -1, -1, null, Main.myPlayer);
                     }

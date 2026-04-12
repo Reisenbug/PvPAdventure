@@ -565,33 +565,7 @@ public class ServerConfig : ModConfig
     #region Hooks / methods
     public override bool AcceptClientChanges(ModConfig pendingConfig, int whoAmI, ref NetworkText message)
     {
-        // Singleplayer always allowed
-        if (Main.netMode == NetmodeID.SinglePlayer)
-            return true;
-
-        // If dragonlens isn't loaded, disallow modifying the config.
-        if (!ModLoader.HasMod("DragonLens"))
-        {
-            message = NetworkText.FromLiteral("Server config changes require DragonLens admin (DragonLens not loaded).");
-            return false;
-        }
-
-        // DragonLens admin check
-        return AcceptClientChanges_DragonLens(whoAmI, ref message);
-    }
-
-    [JITWhenModsEnabled("DragonLens")]
-    private static bool AcceptClientChanges_DragonLens(int whoAmI, ref NetworkText message)
-    {
-        Player player = Main.player[whoAmI];
-
-        if (!DragonLens.Core.Systems.PermissionHandler.CanUseTools(player))
-        {
-            message = NetworkText.FromLiteral("You must be a DragonLens admin to modify this config.");
-            return false;
-        }
         message = NetworkText.FromLiteral("Saved!");
-
         return true;
     }
 

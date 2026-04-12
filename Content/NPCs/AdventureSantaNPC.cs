@@ -61,7 +61,7 @@ internal class AdventureSantaNPC : ModNPC
     // Only for debugging purposes; prevent spawning in normal gameplay
     public override bool CanTownNPCSpawn(int numTownNPCs) => false;
 
-    public override List<string> SetNPCNameList()
+    public override List<string> SetNPCNameList()/* tModPorter Suggestion: Return a list of names */
     {
         return ["Adventure Santa"];
     }

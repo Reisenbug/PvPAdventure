@@ -78,7 +78,7 @@ internal class PlayerStatsUIPanel : UIPanel
 
             tab.OnMouseOver += (_, _) =>
             {
-                SoundEngine.PlaySound(12);
+                SoundEngine.PlaySound(SoundID.MenuTick);
 
                 tab.BackgroundColor = new Color(73, 94, 171);
                 tab.TextColor = Color.White;
@@ -97,7 +97,7 @@ internal class PlayerStatsUIPanel : UIPanel
 
             tab.OnLeftMouseDown += (_, _) =>
             {
-                SoundEngine.PlaySound(12);
+                SoundEngine.PlaySound(SoundID.MenuTick);
                 Select(idx);
             };
 

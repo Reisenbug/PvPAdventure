@@ -192,7 +192,7 @@ public class AdventureMirrorHooks : ModSystem
                             if (((Main.mouseItem.IsTheSameAs(inv[slot]) && ItemLoader.CanStack(Main.mouseItem, inv[slot])) || Main.mouseItem.type == ItemID.None) && (Main.mouseItem.stack < Main.mouseItem.maxStack || Main.mouseItem.type == ItemID.None))
                             {
                                 ItemSlot.PickupItemIntoMouse(inv, context, slot, player);
-                                SoundEngine.PlaySound(12);
+                                SoundEngine.PlaySound(SoundID.MenuTick);
                                 ItemSlot.RefreshStackSplitCooldown();
                             }
                         }

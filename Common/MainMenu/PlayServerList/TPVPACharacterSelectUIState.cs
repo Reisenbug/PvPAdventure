@@ -120,7 +120,7 @@ public class TPVPACharacterSelectUIState : UIState
 
     private void NewCharacterClick(UIMouseEvent evt, UIElement listeningElement)
     {
-        SoundEngine.PlaySound(10);
+        SoundEngine.PlaySound(SoundID.MenuOpen);
         Main.PendingPlayer = new Player();
         Main.menuMode = 888;
         Main.MenuUI.SetState(new UICharacterCreation(Main.PendingPlayer));
@@ -128,14 +128,14 @@ public class TPVPACharacterSelectUIState : UIState
 
     private void GoBackClick(UIMouseEvent evt, UIElement listeningElement)
     {
-        SoundEngine.PlaySound(11);
+        SoundEngine.PlaySound(SoundID.MenuClose);
         //Main.menuMode = 0;
         PlayMenuFlow.ReturnToBrowser(); // CHANGED
     }
 
     private void FadedMouseOver(UIMouseEvent evt, UIElement listeningElement)
     {
-        SoundEngine.PlaySound(12);
+        SoundEngine.PlaySound(SoundID.MenuTick);
         ((UIPanel)evt.Target).BackgroundColor = new Color(73, 94, 171);
         ((UIPanel)evt.Target).BorderColor = Colors.FancyUIFatButtonMouseOver;
     }

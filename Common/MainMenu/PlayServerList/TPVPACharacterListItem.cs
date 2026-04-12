@@ -220,7 +220,7 @@ public class TPVPACharacterListItem : UIPanel
 
     private void RenameButtonClick(UIMouseEvent evt, UIElement listeningElement)
     {
-        SoundEngine.PlaySound(10);
+        SoundEngine.PlaySound(SoundID.MenuOpen);
         Main.clrInput();
         UIVirtualKeyboard uIVirtualKeyboard = new UIVirtualKeyboard(Lang.menu[45].Value, "", OnFinishedSettingName, GoBackHere, 0, allowEmpty: true);
         uIVirtualKeyboard.SetMaxInputLength(20);
@@ -276,7 +276,7 @@ public class TPVPACharacterListItem : UIPanel
         {
             if (Main.PlayerList[i] == this._data)
             {
-                SoundEngine.PlaySound(10);
+                SoundEngine.PlaySound(SoundID.MenuOpen);
                 Main.selectedPlayer = i;
                 Main.menuMode = 5;
                 break;

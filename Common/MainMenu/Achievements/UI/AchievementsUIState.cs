@@ -82,7 +82,7 @@ public sealed class AchievementsUIState : ResizableUIState
 
         reset.OnMouseOver += (_, _) =>
         {
-            SoundEngine.PlaySound(12);
+            SoundEngine.PlaySound(SoundID.MenuTick);
             reset.BackgroundColor = new Color(73, 94, 171);
             reset.TextColor = Color.White;
             reset.BorderColor = Color.Yellow;

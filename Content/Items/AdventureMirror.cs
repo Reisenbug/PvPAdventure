@@ -3,6 +3,7 @@ using PvPAdventure.Common.GameTimer;
 using PvPAdventure.Common.SpawnSelector;
 using PvPAdventure.Core.Config;
 using PvPAdventure.Core.Net;
+using System;
 using Terraria;
 using Terraria.ID;
 using Terraria.Localization;
@@ -33,7 +34,7 @@ internal class AdventureMirror : ModItem
         Item.noUseGraphic = false;
     }
     public override bool ConsumeItem(Player player) => false;
-    public override bool? UseItem(Player player)
+    public override Nullable<bool> UseItem(Player player)/* tModPorter Suggestion: Return null instead of false */
     {
         //if (Main.netMode == NetmodeID.MultiplayerClient)
         //{

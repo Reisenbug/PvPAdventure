@@ -64,7 +64,7 @@ internal sealed class MainMenuTPVPABrowserUIState : UIState
         back.SetSnapPoint("Back", 0);
         back.OnMouseOver += (evt, _) =>
         {
-            SoundEngine.PlaySound(12);
+            SoundEngine.PlaySound(SoundID.MenuTick);
             SetPanelColors(evt.Target, new Color(73, 94, 171), Colors.FancyUIFatButtonMouseOver);
         };
         back.OnMouseOut += (evt, _) => SetPanelColors(evt.Target, new Color(63, 82, 151) * 0.8f, Color.Black);
@@ -289,7 +289,7 @@ internal sealed class MainMenuTPVPABrowserUIState : UIState
 
     private void GoBackToMainMenu()
     {
-        SoundEngine.PlaySound(11);
+        SoundEngine.PlaySound(SoundID.MenuClose);
         Main.menuMode = 0;
     }
 
