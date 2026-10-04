@@ -29,9 +29,9 @@ public sealed class RuntimeChecks : ModSystem
         Mod.Logger.Info("PASS: " + name);
     }
 
-    public override void PostUpdateWorld()
+    public override void OnWorldLoad()
     {
-        if (ran) return;
+        if (ran || Terraria.Program.LaunchParameters.ContainsKey("-subworld")) return;
         ran = true;
         try
         {
