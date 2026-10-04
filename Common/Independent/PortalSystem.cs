@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -57,6 +58,22 @@ public sealed class PortalSystem : ModSystem
     }
 
     internal bool Held => keybind?.Current == true;
+
+    public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers)
+    {
+        int index = layers.FindIndex(layer => layer.Name == "Vanilla: Mouse Text");
+        if (index < 0)
+            return;
+        layers.Insert(index, new LegacyGameInterfaceLayer("PvPAdventure: Portal Creation", () =>
+        {
+            int remaining = Main.LocalPlayer.GetModPlayer<PortalPlayer>().Remaining;
+            if (remaining > 0)
+                Utils.DrawBorderString(Main.spriteBatch, $"Creating portal: {(remaining + 59) / 60}s",
+                    new Vector2(Main.screenWidth / 2f, Main.screenHeight - 100), Color.White,
+                    anchorx: 0.5f);
+            return true;
+        }, InterfaceScaleType.UI));
+    }
 
     internal static void Request(byte action, int target = -1)
     {
@@ -333,7 +350,8 @@ public sealed class PortalMapLayer : ModMapLayer
                 continue;
             text = player.dead ? "Select portal for next respawn" :
                 PortalSystem.CanTravelFrom(player) ? "Teleport to team portal" : "Travel from spawn, a bed, or a team portal";
-            if (Main.mapFullscreen && Main.mouseLeft && Main.mouseLeftRelease)
+            if (Main.mapFullscreen && Main.mouseLeft && Main.mouseLeftRelease &&
+                (player.dead || PortalSystem.CanTravelFrom(player)))
             {
                 Main.mouseLeftRelease = false;
                 PortalSystem.Request(2, npc.whoAmI);
