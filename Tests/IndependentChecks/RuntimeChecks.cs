@@ -112,12 +112,13 @@ public sealed class RuntimeChecks : ModSystem
             Call(typeof(PortalSystem), "Execute", null, b, (byte)2, portal.whoAmI);
             Check(Vector2.Distance(b.Center, portal.Center) < 100, "Teammate teleports to measured safe destination");
             Call(typeof(LocalMatchSystem), "RecordKill", ModContent.GetInstance<LocalMatchSystem>(), a);
-            b.GetModPlayer<LocalMatchPlayer>().Kill(100, 0, true, Terraria.DataStructures.PlayerDeathReason.ByPlayer(a.whoAmI));
+            b.GetModPlayer<LocalMatchPlayer>().Kill(100, 0, true,
+                Terraria.DataStructures.PlayerDeathReason.ByPlayerItem(a.whoAmI, a.HeldItem));
             b.active = false;
             game.CurrentPhase = GameManager.Phase.Waiting;
             string folder = Path.Combine(Main.SavePath, "PvPAdventure", "Matches");
             var match = JsonSerializer.Deserialize<LocalMatchSystem.MatchResult>(
-                File.ReadAllText(Directory.GetFiles(folder, "*.json").Single()));
+                File.ReadAllText(Directory.GetFiles(folder, "*.json").OrderByDescending(File.GetLastWriteTimeUtc).First()));
             Check(match.Players.Single(player => player.Name == a.name).Kills == 1, "Local match records kill");
             var offline = match.Players.Single(player => player.Name == b.name);
             Check(offline.Deaths == 1 && offline.PortalUses == 1, "Disconnected participant remains in local result");
