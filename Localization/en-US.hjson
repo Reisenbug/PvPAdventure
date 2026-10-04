@@ -17,6 +17,8 @@ Mods: {
 			OpenLoadoutMenu.DisplayName: Open Loadout Menu
 			ArenasMenu.DisplayName: Arenas Menu
 			UseAdventureMirror.DisplayName: Use Adventure Mirror
+			StartingShop.DisplayName: Starting Kit Shop
+			UsePortalCreator.DisplayName: Create Team Portal
 			DLAdminManagerTool.DisplayName: DL Admin Manager Tool
 			DLEndGameTool.DisplayName: DL End Game Tool
 			DLEndGameToolRightClick.DisplayName: DL End Game Tool Right Click
@@ -384,6 +386,11 @@ Mods: {
 				DisplayName: Red Sniper Rifle
 				Tooltip: ""
 			}
+
+			PortalCreatorItem: {
+				DisplayName: Team Portal Creator
+				Tooltip: "Hold use or the portal key while standing still to create a team portal"
+			}
 		}
 
 		NPCs: {
@@ -429,6 +436,7 @@ Mods: {
 			}
 
 			DebugBoss.DisplayName: Debug Boss
+			TeamPortal.DisplayName: Team Portal
 		}
 
 		Configs: {
@@ -1826,6 +1834,49 @@ Mods: {
 				ForcePlayersToSpectateWhenJoining: {
 					Label: Force Players To Spectate When Joining
 					Tooltip: ""
+				}
+			}
+
+			IndependentConfig: {
+				DisplayName: Independent Config
+
+				PortalCreationSeconds: {
+					Label: Portal Creation Seconds
+					Tooltip: ""
+				}
+
+				PortalLife: {
+					Label: Portal Life
+					Tooltip: ""
+				}
+
+				StartingGold: {
+					Label: Starting Kit Budget (Gold)
+					Tooltip: "Shopping budget for each reset kit; does not grant inventory coins"
+				}
+
+				StartingShop: {
+					Label: Starting Shop
+					Tooltip: ""
+				}
+			}
+
+			KitItem: {
+				Tooltip: ""
+
+				Item: {
+					Label: Item
+					Tooltip: ""
+				}
+
+				Stack: {
+					Label: Stack
+					Tooltip: ""
+				}
+
+				Price: {
+					Label: Price
+					Tooltip: "Price per purchase in copper units"
 				}
 			}
 		}
