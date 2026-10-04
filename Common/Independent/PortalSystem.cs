@@ -153,7 +153,7 @@ public sealed class PortalSystem : ModSystem
             if (npc.ModNPC is TeamPortal && (int)npc.ai[0] == player.whoAmI)
             {
                 npc.active = false;
-                if (Main.dedServ)
+                if (Main.netMode == NetmodeID.Server)
                     NetMessage.SendData(MessageID.SyncNPC, number: npc.whoAmI);
             }
         int index = NPC.NewNPC(player.GetSource_Misc("Portal"),
@@ -163,7 +163,7 @@ public sealed class PortalSystem : ModSystem
         {
             Main.npc[index].Center = position;
             Main.npc[index].netUpdate = true;
-            if (Main.dedServ)
+            if (Main.netMode == NetmodeID.Server)
                 NetMessage.SendData(MessageID.SyncNPC, number: index);
             Log.Info($"Portal created: owner={player.whoAmI}, team={player.team}, center={position}, npc={index}");
         }
@@ -182,7 +182,7 @@ public sealed class PortalSystem : ModSystem
                 continue;
             player.Teleport(destination, TeleportationStyleID.RecallPotion);
             player.velocity = Vector2.Zero;
-            if (Main.dedServ)
+            if (Main.netMode == NetmodeID.Server)
             {
                 RemoteClient.CheckSection(player.whoAmI, destination);
                 NetMessage.SendData(MessageID.TeleportEntity, number: 0, number2: player.whoAmI,
@@ -268,7 +268,7 @@ public sealed class PortalPlayer : ModPlayer
 
     internal void Notify()
     {
-        if (!Main.dedServ)
+        if (Main.netMode != NetmodeID.Server)
             return;
         ModPacket packet = Mod.GetPacket();
         packet.Write((byte)AdventurePacketIdentifier.Portal);
@@ -313,7 +313,7 @@ public sealed class TeamPortal : ModNPC
                 !Main.player[owner].active || Main.player[owner].team != (int)NPC.ai[1]))
         {
             NPC.active = false;
-            if (Main.dedServ)
+            if (Main.netMode == NetmodeID.Server)
                 NetMessage.SendData(MessageID.SyncNPC, number: NPC.whoAmI);
         }
     }
