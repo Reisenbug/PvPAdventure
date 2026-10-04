@@ -71,6 +71,16 @@ public sealed class RuntimeChecks : ModSystem
             game.CurrentPhase = GameManager.Phase.Playing;
             Shop(a, 1);
             Check(a.inventory.Any(item => item.type == ItemID.BabyBirdStaff), "Shop reset is denied after match starts");
+            Main.netMode = NetmodeID.Server;
+            using (MemoryStream stream = new())
+            {
+                using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+                writer.Write((byte)1);
+                stream.Position = 0;
+                Call(typeof(KitShopSystem), "Handle", null, new BinaryReader(stream), a.whoAmI);
+            }
+            Check(a.inventory.Any(item => item.type == ItemID.BabyBirdStaff), "Server packet cannot reset a kit during a match");
+            Main.netMode = NetmodeID.SinglePlayer;
             a.selectedItem = Array.FindIndex(a.inventory, item => item.type == ModContent.ItemType<PortalCreatorItem>());
             a.Center = new Vector2((Main.spawnTileX + 80) * 16, (Main.spawnTileY - 40) * 16);
             a.velocity = Vector2.Zero;
@@ -88,12 +98,21 @@ public sealed class RuntimeChecks : ModSystem
             Check((bool)Call(typeof(TeamPortal), "CanTravel", portal.ModNPC, b), "Teammate may use portal");
             Check(!(bool)Call(typeof(TeamPortal), "CanTravel", portal.ModNPC, c), "Enemy cannot use portal");
             Vector2 before = c.Center;
-            Call(typeof(PortalSystem), "Execute", null, c, (byte)2, portal.whoAmI);
+            Main.netMode = NetmodeID.Server;
+            using (MemoryStream stream = new())
+            {
+                using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+                writer.Write((byte)2);
+                writer.Write(portal.whoAmI);
+                stream.Position = 0;
+                Call(typeof(PortalSystem), "Handle", null, new BinaryReader(stream), c.whoAmI);
+            }
+            Main.netMode = NetmodeID.SinglePlayer;
             Check(c.Center == before, "Forged enemy travel request rejected");
             Call(typeof(PortalSystem), "Execute", null, b, (byte)2, portal.whoAmI);
             Check(Vector2.Distance(b.Center, portal.Center) < 100, "Teammate teleports to measured safe destination");
             Call(typeof(LocalMatchSystem), "RecordKill", ModContent.GetInstance<LocalMatchSystem>(), a);
-            Call(typeof(LocalMatchSystem), "RecordDeath", ModContent.GetInstance<LocalMatchSystem>(), b);
+            b.GetModPlayer<LocalMatchPlayer>().Kill(100, 0, true, Terraria.DataStructures.PlayerDeathReason.ByPlayer(a.whoAmI));
             b.active = false;
             game.CurrentPhase = GameManager.Phase.Waiting;
             string folder = Path.Combine(Main.SavePath, "PvPAdventure", "Matches");
