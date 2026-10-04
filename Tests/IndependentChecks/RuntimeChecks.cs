@@ -42,6 +42,9 @@ public sealed class RuntimeChecks : ModSystem
             Player c = Main.player[2];
             foreach (Player player in new[] { a, b, c })
             {
+                player.whoAmI = Array.IndexOf(Main.player, player);
+                typeof(PlayerLoader).GetMethod("SetupPlayer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                    .Invoke(null, new object[] { player });
                 player.active = true;
                 player.dead = false;
                 player.ghost = false;
