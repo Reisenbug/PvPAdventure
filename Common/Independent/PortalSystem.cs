@@ -56,7 +56,7 @@ public sealed class PortalSystem : ModSystem
             keybind = KeybindLoader.RegisterKeybind(Mod, "UsePortalCreator", Keys.P);
     }
 
-    internal bool Pressed => keybind?.JustPressed == true;
+    internal bool Held => keybind?.Current == true;
 
     internal static void Request(byte action, int target = -1)
     {
@@ -187,7 +187,7 @@ public sealed class PortalPlayer : ModPlayer
 
     public override void ProcessTriggers(TriggersSet triggersSet)
     {
-        if (!ModContent.GetInstance<PortalSystem>().Pressed || Player.dead)
+        if (!ModContent.GetInstance<PortalSystem>().Held || Player.dead)
             return;
         int slot = Array.FindIndex(Player.inventory, 0, 50,
             item => item.type == ModContent.ItemType<PortalCreatorItem>());
