@@ -86,7 +86,7 @@ internal class KeybindsPlayer : ModPlayer
         {
             if (Main.netMode == NetmodeID.MultiplayerClient && spectatorConfig.ForcePlayersToSpectateWhenJoining)
             {
-                if (PermissionHandler.LooksLikeAdmin(Main.LocalPlayer))
+                if (ModLoader.HasMod("DragonLens") && IsDragonLensAdmin(Main.LocalPlayer))
                 {
                     Main.NewText("Opening spectate options for admin.", Color.Yellow);
                 }
@@ -107,4 +107,7 @@ internal class KeybindsPlayer : ModPlayer
             AdventureMirror.TryUse(Player);
         }
     }
+
+    [JITWhenModsEnabled("DragonLens")]
+    private static bool IsDragonLensAdmin(Player player) => PermissionHandler.LooksLikeAdmin(player);
 }
