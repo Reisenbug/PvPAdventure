@@ -74,13 +74,14 @@ public sealed class RuntimeChecks : ModSystem
             for (int x = (int)a.Center.X / 16 - 4; x <= (int)a.Center.X / 16 + 4; x++)
                 for (int y = (int)a.Center.Y / 16 - 6; y <= (int)a.Center.Y / 16 + 6; y++)
                 {
-                    Main.tile[x, y].HasTile = false;
-                    Main.tile[x, y].LiquidAmount = 0;
+                    Tile tile = Main.tile[x, y];
+                    tile.HasTile = false;
+                    tile.LiquidAmount = 0;
                 }
             ModContent.GetInstance<IndependentConfig>().PortalCreationSeconds = 0;
             Call(typeof(PortalSystem), "Execute", null, a, (byte)0, -1);
             a.GetModPlayer<PortalPlayer>().PostUpdate();
-            NPC portal = Main.ActiveNPCs.First(npc => npc.ModNPC is TeamPortal);
+            NPC portal = Main.npc.First(npc => npc.active && npc.ModNPC is TeamPortal);
             Check((bool)Call(typeof(TeamPortal), "CanTravel", portal.ModNPC, b), "Teammate may use portal");
             Check(!(bool)Call(typeof(TeamPortal), "CanTravel", portal.ModNPC, c), "Enemy cannot use portal");
             Vector2 before = c.Center;
