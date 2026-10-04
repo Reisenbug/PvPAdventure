@@ -360,6 +360,10 @@ public class GameManager : ModSystem
     // NOTE: This is not called on multiplayer clients (see CurrentPhase property).
     private void OnPhaseChange(Phase oldPhase, Phase newPhase)
     {
+        if (oldPhase == Phase.Playing && newPhase == Phase.Waiting)
+            ModContent.GetInstance<global::PvPAdventure.Common.Independent.LocalMatchSystem>().End("MatchEnded");
+        if (oldPhase != Phase.Playing && newPhase == Phase.Playing)
+            ModContent.GetInstance<global::PvPAdventure.Common.Independent.LocalMatchSystem>().Begin();
         Log.Chat("New GamePhase: " + newPhase + ", (old: " + oldPhase + ")");
 
         // Only save when a real match ends (Playing → Waiting transition)

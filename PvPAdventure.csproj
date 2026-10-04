@@ -3,8 +3,12 @@
 	<Import Project="..\tModLoader.targets" />
 	<PropertyGroup>
 		<AssemblyName>PvPAdventure</AssemblyName>
+		<TargetFramework>net8.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
 	</PropertyGroup>
+	<ItemGroup>
+		<Compile Remove="Tests/**/*.cs" />
+	</ItemGroup>
 
 	<ItemGroup>
 

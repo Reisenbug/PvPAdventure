@@ -23,5 +23,7 @@ public enum AdventurePacketIdentifier : byte
     ArenasAdmin, // admin for arenas (send players to arenas, etc)
     Skins, // sync who has skins for all players
     Spectator, // sync spectator mode for all players
-    SessionTracker // sync session time for all players
+    SessionTracker, // sync session time for all players
+    KitShop,
+    Portal,
 }

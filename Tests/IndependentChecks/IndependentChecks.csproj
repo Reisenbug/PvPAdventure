@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../../../tModLoader.targets" />
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>IndependentChecks</AssemblyName>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="PvPAdventure">
+      <HintPath>../../bin/Debug/net8.0/PvPAdventure.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

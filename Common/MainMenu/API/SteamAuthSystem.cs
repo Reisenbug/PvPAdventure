@@ -6,7 +6,7 @@ using Terraria.ModLoader;
 
 namespace PvPAdventure.Common.MainMenu.API;
 
-[Autoload(Side = ModSide.Client)]
+[Autoload(false)]
 public sealed class SteamAuthSystem : ModSystem
 {
     private Callback<GetTicketForWebApiResponse_t>? authTicketCallback;

@@ -30,7 +30,7 @@ public class Keybinds : ModSystem
     public override void Load()
     {
         Scoreboard = KeybindLoader.RegisterKeybind(Mod, "Scoreboard", Keys.OemTilde);
-        BountyShop = KeybindLoader.RegisterKeybind(Mod, "BountyShop", Keys.P);
+        BountyShop = KeybindLoader.RegisterKeybind(Mod, "BountyShop", Keys.B);
         AllChat = KeybindLoader.RegisterKeybind(Mod, "AllChat", Keys.U);
         Dash = KeybindLoader.RegisterKeybind(Mod, "Dash", Keys.F);
         ArenasMenu = KeybindLoader.RegisterKeybind(Mod, "ArenasMenu", Keys.NumPad7);

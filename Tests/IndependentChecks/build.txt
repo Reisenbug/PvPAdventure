@@ -1,0 +1,5 @@
+displayName = Independent Runtime Checks
+author = Reisenbug
+version = 0.1
+modReferences = PvPAdventure
+buildIgnore = bin\*, obj\*, *.csproj

@@ -1,9 +1,9 @@
-displayName = PvP Adventure
+displayName = PvP Adventure Independent
 author = resin <hey@amberres.in>
-version = 1.1.0
+version = 1.1.1
 homepage = https://tpvpa.terraria.sh
 weakReferences = DragonLens
-buildIgnore = *.csproj, *.user, *.md, obj\*, bin\*, .vs\*, Assets\Old\*, Assets\Unused\*, *.psd
+buildIgnore = *.csproj, *.user, *.md, obj\*, bin\*, .vs\*, Tests\*, Assets\Old\*, Assets\Unused\*, *.psd
 sortAfter = SubworldLibrary, DragonLens
 loadAfter = SubworldLibrary, DragonLens
 modReferences = SubworldLibrary

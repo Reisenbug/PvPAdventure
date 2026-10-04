@@ -177,6 +177,7 @@ internal class StatisticsPlayer : ModPlayer
 
             ModContent.GetInstance<PointsManager>().AwardPlayerKillToTeam(killer, Player);
             killer.GetModPlayer<StatisticsPlayer>().Kills += 1;
+            ModContent.GetInstance<global::PvPAdventure.Common.Independent.LocalMatchSystem>().RecordKill(killer);
             killer.GetModPlayer<StatisticsPlayer>().SyncStatistics();
 
             Deaths += 1;

@@ -15,7 +15,7 @@ namespace PvPAdventure.Common.MainMenu.State;
 /// Adds a TPVPA History button to the Main Menu.
 /// Upon click, enter <see cref="MatchHistoryUIState"/>
 /// </summary>
-[Autoload(Side = ModSide.Client)]
+[Autoload(false)]
 public class MainMenuSystem : ModSystem
 {
     public UserInterface ui;
