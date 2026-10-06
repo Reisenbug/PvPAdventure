@@ -35,6 +35,12 @@ Mods: {
 			SpectateMenu.DisplayName: Spectate Menu
 		}
 
+		Projectiles: {
+			PowerBombProjectile.DisplayName: Power Bomb
+			StickyPowerBombProjectile.DisplayName: Sticky Power Bomb
+			PowerBombExplosion.DisplayName: Power Bomb Explosion
+		}
+
 		Tools: {
 			DLStartGameTool: {
 				DisplayName: Start Game
@@ -232,6 +238,16 @@ Mods: {
 			ServerConfigItem: {
 				DisplayName: Server Config Item
 				Tooltip: ""
+			}
+
+			PowerBomb: {
+				DisplayName: Power Bomb
+				Tooltip: Explodes after 5 seconds in a 9-tile radius; 200 base damage; hurts you but not teammates; unavailable before a match or in the safe zone
+			}
+
+			StickyPowerBomb: {
+				DisplayName: Sticky Power Bomb
+				Tooltip: Sticks to blocks; explodes after 5 seconds in a 9-tile radius; 200 base damage; hurts you but not teammates; unavailable before a match or in the safe zone
 			}
 
 			AdventureMirror: {

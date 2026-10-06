@@ -182,6 +182,7 @@ public sealed class RuntimeChecks : ModSystem
             Check(match.Players.Single(player => player.Name == a.name).Kills == 1, "Local match records kill");
             var offline = match.Players.Single(player => player.Name == b.name);
             Check(offline.Deaths == 1 && offline.PortalUses == 1, "Disconnected participant remains in local result");
+            CheckPowerBomb(a, b, c);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -192,5 +193,75 @@ public sealed class RuntimeChecks : ModSystem
             Console.WriteLine(exception);
             Environment.Exit(1);
         }
+    }
+
+    private void CheckPowerBomb(Player owner, Player teammate, Player enemy)
+    {
+        Type bombType = typeof(TeamBossNPC).Assembly.GetType("PvPAdventure.Content.Projectiles.PowerBombProjectile");
+        int itemType = ModContent.Find<ModItem>("PvPAdventure/PowerBomb").Type;
+        Check(ModContent.GetInstance<IndependentConfig>().StartingShop.Any(entry => entry.Item.Type == itemType && entry.Price == 100000),
+            "Power bomb is available for the upstream 10-gold starting price");
+        int x = Main.spawnTileX + 80, y = Main.spawnTileY + 50;
+        Vector2 center = new(x * 16 + 8, y * 16 + 8);
+        foreach (Player player in new[] { owner, teammate, enemy })
+        {
+            player.active = true;
+            player.dead = player.ghost = player.immune = false;
+            player.hostile = true;
+            player.Center = center;
+            player.statLife = player.statLifeMax = player.statLifeMax2 = 1000;
+            player.buffType = new int[Player.MaxBuffs];
+            player.buffTime = new int[Player.MaxBuffs];
+            player.buffImmune = new bool[BuffLoader.BuffCount];
+        }
+        int bombId = Projectile.NewProjectile(owner.GetSource_Misc("PowerBombChecks"), center, Vector2.Zero,
+            ModContent.Find<ModProjectile>("PvPAdventure/PowerBombProjectile").Type, 0, 0, owner.whoAmI);
+        Projectile bomb = Main.projectile[bombId];
+        Check(bomb.timeLeft == 300 && bomb.ModProjectile.CanDamage() == false, "Five-second fuse does not damage on contact");
+        Check((bool)Call(bombType, "CanDamagePlayer", bomb.ModProjectile, owner, owner), "Power bomb can hurt its owner");
+        Check(!(bool)Call(bombType, "CanDamagePlayer", bomb.ModProjectile, owner, teammate), "Power bomb protects teammates");
+        Check((bool)Call(bombType, "CanDamagePlayer", bomb.ModProjectile, owner, enemy), "Power bomb can hurt nearby enemies");
+        enemy.ghost = true;
+        Check(!(bool)Call(bombType, "CanDamagePlayer", bomb.ModProjectile, owner, enemy), "Power bomb does not hurt spectators");
+        enemy.ghost = false;
+        enemy.Center = new Vector2(Main.spawnTileX * 16, Main.spawnTileY * 16);
+        bomb.Center = enemy.Center;
+        Check(!(bool)Call(bombType, "CanDamagePlayer", bomb.ModProjectile, owner, enemy), "Power bomb respects spawn combat protection");
+        bomb.Center = enemy.Center = center;
+        Item bombItem = new(itemType);
+        Check(!bombItem.ModItem.CanUseItem(owner), "Power bomb cannot be thrown before a match");
+        Tile stone = Main.tile[x, y];
+        stone.HasTile = true;
+        stone.TileType = TileID.Stone;
+        Tile brick = Main.tile[x + 1, y];
+        brick.HasTile = true;
+        brick.TileType = TileID.BlueDungeonBrick;
+        Check((bool)Call(bombType, "CanDestroyTile", null, x, y), "Power bomb may destroy ordinary stone");
+        Check(!(bool)Call(bombType, "CanDestroyTile", null, x + 1, y), "Power bomb protects dungeon bricks");
+        bool[] mechs = { NPC.downedMechBoss1, NPC.downedMechBoss2, NPC.downedMechBoss3 };
+        Tile chlorophyte = Main.tile[x + 2, y];
+        chlorophyte.HasTile = true;
+        chlorophyte.TileType = TileID.Chlorophyte;
+        NPC.downedMechBoss1 = NPC.downedMechBoss2 = NPC.downedMechBoss3 = false;
+        Check(!(bool)Call(bombType, "CanDestroyTile", null, x + 2, y), "Power bomb protects chlorophyte before all mechs");
+        NPC.downedMechBoss1 = NPC.downedMechBoss2 = NPC.downedMechBoss3 = true;
+        Check((bool)Call(bombType, "CanDestroyTile", null, x + 2, y), "Power bomb unlocks chlorophyte after all mechs");
+        NPC.downedMechBoss1 = mechs[0]; NPC.downedMechBoss2 = mechs[1]; NPC.downedMechBoss3 = mechs[2];
+        Main.netMode = NetmodeID.MultiplayerClient;
+        bomb.ModProjectile.OnKill(0);
+        Check(Main.tile[x, y].HasTile && owner.statLife == 1000, "Client explosion does not destroy tiles or apply player damage");
+        Main.netMode = NetmodeID.Server;
+        bomb.ModProjectile.OnKill(0);
+        Check(!Main.tile[x, y].HasTile && Main.tile[x + 1, y].HasTile, "Authoritative explosion destroys stone but keeps protected bricks");
+        Check(owner.statLife < 1000 && enemy.statLife < 1000 && teammate.statLife == 1000,
+            "Authoritative explosion damages owner and enemy once, not teammates");
+        var explosion = Main.projectile.Single(projectile => projectile.active && projectile.type == ModContent.Find<ModProjectile>("PvPAdventure/PowerBombExplosion").Type);
+        Check(explosion.Center == center && !explosion.ModProjectile.CanHitPvp(enemy), "Explosion is centered and cannot double-hit players");
+        int stickyId = Projectile.NewProjectile(owner.GetSource_Misc("PowerBombChecks"), center, Vector2.One,
+            ModContent.Find<ModProjectile>("PvPAdventure/StickyPowerBombProjectile").Type, 0, 0, owner.whoAmI);
+        var sticky = Main.projectile[stickyId];
+        sticky.ModProjectile.OnTileCollide(Vector2.One);
+        Check(sticky.ai[0] == 1 && sticky.velocity == Vector2.Zero && !sticky.tileCollide,
+            "Sticky bomb uses synchronized attachment state");
     }
 }

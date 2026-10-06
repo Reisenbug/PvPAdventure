@@ -95,7 +95,8 @@ public sealed class IndependentConfig : ModConfig
     new(ItemID.Deathweed, 1, Item.buyPrice(silver: 500)),
     new(ItemID.Moonglow, 1, Item.buyPrice(silver: 300)),
     new(ItemID.Cactus, 1, Item.buyPrice(silver: 20)),
-    new(ItemID.FloatingTube, 1, Item.buyPrice(silver: 50))
+    new(ItemID.FloatingTube, 1, Item.buyPrice(silver: 50)),
+    new() { Item = new ItemDefinition("PvPAdventure/PowerBomb"), Stack = 1, Price = Item.buyPrice(gold: 10) }
     ];
 
     public sealed class KitItem
