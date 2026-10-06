@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.Xna.Framework;
 using PvPAdventure.Common.GameTimer;
+using PvPAdventure.Common.Combat.TeamBoss;
 using PvPAdventure.Common.Independent;
 using PvPAdventure.Core.Config;
 using Terraria;
@@ -17,6 +18,8 @@ public sealed class IndependentChecks : Mod { }
 
 public sealed class RuntimeChecks : ModSystem
 {
+    private delegate int TextOriginal(Rectangle location, Color color, int amount, bool dramatic, bool dot);
+    private delegate int TextHook(TextOriginal original, Rectangle location, Color color, int amount, bool dramatic, bool dot);
     private bool ran;
     private int assertions;
     private static object Call(Type type, string method, object instance, params object[] arguments) =>
@@ -69,6 +72,47 @@ public sealed class RuntimeChecks : ModSystem
             Check((int)Call(typeof(Player), "GetPickaxeDamage", a,
                 miningX, miningY, 50, 0, miningTile) == 0, "Insufficient pick power still cannot mine hellstone");
             miningTile.TileType = originalType;
+            NPC damageNpc = new NPC();
+            damageNpc.SetDefaults(NPCID.BlueSlime);
+            var damageGlobal = damageNpc.GetGlobalNPC<TeamBossNPC>();
+            bool hiddenDamage = false;
+            On_NPC.orig_StrikeNPC_HitInfo_bool_bool strike = (npc, hit, fromNet, noInteraction) =>
+            {
+                hiddenDamage = hit.HideCombatText;
+                return hit.Damage;
+            };
+            Call(typeof(TeamBossNPC), "OnNPCStrikeNPC", damageGlobal, strike, damageNpc,
+                new NPC.HitInfo { Damage = 17 }, false, false);
+            Check(!hiddenDamage, "Unassigned team hits retain vanilla damage numbers");
+            bool wasDedicated = Main.dedServ;
+            int damageTexts = 0;
+            using var textHook = new MonoMod.RuntimeDetour.Hook(
+                typeof(CombatText).GetMethod("NewText", new[] { typeof(Rectangle), typeof(Color), typeof(int), typeof(bool), typeof(bool) }),
+                (TextHook)((original, location, color, amount, dramatic, dot) =>
+                {
+                    if (amount == 17 && color == Main.teamColor[(int)Terraria.Enums.Team.Red]) damageTexts++;
+                    return 0;
+                }));
+            try
+            {
+                Main.dedServ = false;
+                Call(typeof(TeamBossNPC), "OnNPCStrikeNPC", damageGlobal, strike, damageNpc,
+                    new NPC.HitInfo { Damage = 17 }, false, false);
+                Check(!hiddenDamage && damageTexts == 0, "Client without a team retains vanilla damage numbers");
+                damageGlobal.MarkNextStrikeForTeam(damageNpc, Terraria.Enums.Team.Red);
+                Call(typeof(TeamBossNPC), "OnNPCStrikeNPC", damageGlobal, strike, damageNpc,
+                    new NPC.HitInfo { Damage = 17 }, false, false);
+                Check(hiddenDamage && damageTexts == 1,
+                    "Team hit draws exactly one damage number");
+                Call(typeof(TeamBossNPC), "OnNPCStrikeNPC", damageGlobal, strike, damageNpc,
+                    new NPC.HitInfo { Damage = 17, HideCombatText = true }, false, false);
+                Check(hiddenDamage && damageTexts == 1,
+                    "Hidden hits remain hidden without extra team damage numbers");
+            }
+            finally
+            {
+                Main.dedServ = wasDedicated;
+            }
             GameManager game = ModContent.GetInstance<GameManager>();
             game.CurrentPhase = GameManager.Phase.Waiting;
             void Shop(Player player, byte action, int type = 0, System.Collections.Generic.Dictionary<int, int> preset = null) =>

@@ -167,11 +167,9 @@ public sealed class TeamBossNPC : GlobalNPC
 
         Team strikeTeam = boss._lastStrikeTeam;
 
-        // Always suppress vanilla PvE combat text; we draw our own.
-        hit.HideCombatText = true;
-
-        if (!Main.dedServ && strikeTeam != Team.None)
+        if (!Main.dedServ && !hit.HideCombatText && strikeTeam != Team.None)
         {
+            hit.HideCombatText = true;
             CombatText.NewText(
                 new Rectangle((int)self.position.X, (int)self.position.Y, self.width, self.height),
                 Main.teamColor[(int)strikeTeam],
