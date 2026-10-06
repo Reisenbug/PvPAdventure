@@ -13,6 +13,6 @@ internal class SpectatorConfig : ModConfig
     public bool IsSpectateEnabled;
 
     [BackgroundColor(40, 40, 110)]
-    [DefaultValue(true)]
+    [DefaultValue(false)]
     public bool ForcePlayersToSpectateWhenJoining;
 }

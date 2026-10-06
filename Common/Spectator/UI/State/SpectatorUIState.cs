@@ -41,13 +41,12 @@ internal sealed class SpectatorUIState : UIState
         worldButton = CreateTopButton(3, ToggleWorldPanel, Ass.Icon_World);
         npcButton = CreateTopButton(4, ToggleNpcPanel, Ass.Icon_NPC);
 
-#if DEBUG
-        Append(ghostToggleButton);
-        Append(joinToggleButton);
-#endif
-        Append(playerButton);
-        Append(worldButton);
-        Append(npcButton);
+        if (SpectatorSystem.IsInSpectateMode(Main.LocalPlayer))
+        {
+            Append(playerButton);
+            Append(worldButton);
+            Append(npcButton);
+        }
 
         UpdateJoinPanel();
     }
@@ -189,6 +188,27 @@ internal sealed class SpectatorUIState : UIState
         Player local = Main.LocalPlayer;
         if (local is null || !local.active)
             return;
+
+        if (SpectatorSystem.IsInSpectateMode(local))
+        {
+            if (playerButton.Parent is null)
+            {
+                Append(playerButton);
+                Append(worldButton);
+                Append(npcButton);
+            }
+        }
+        else
+        {
+            playerButton.Remove();
+            worldButton.Remove();
+            npcButton.Remove();
+            playerPanel?.Remove();
+            worldPanel?.Remove();
+            npcPanel?.Remove();
+            playerSpectatorControls?.Remove();
+            npcSpectatorControls?.Remove();
+        }
 
         HandleHover(ghostToggleButton, "Toggle ghost/player mode");
         HandleHover(joinToggleButton, "Toggle spectate join UI");
