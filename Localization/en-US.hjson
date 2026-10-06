@@ -17,6 +17,7 @@ Mods: {
 			OpenLoadoutMenu.DisplayName: Open Loadout Menu
 			ArenasMenu.DisplayName: Arenas Menu
 			UseAdventureMirror.DisplayName: Use Adventure Mirror
+			StartGame.DisplayName: Start Game
 			StartingShop.DisplayName: Starting Kit Shop
 			UsePortalCreator.DisplayName: Create Team Portal
 			DLAdminManagerTool.DisplayName: DL Admin Manager Tool

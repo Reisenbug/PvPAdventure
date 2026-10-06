@@ -2,6 +2,7 @@ using DragonLens.Core.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using PvPAdventure.Common.Arenas.UI;
+using PvPAdventure.Common.AdminTools.Tools.StartGameTool;
 using PvPAdventure.Common.Bounties;
 using PvPAdventure.Common.GameTimer;
 using PvPAdventure.Common.Spectator.UI.State;
@@ -26,6 +27,7 @@ public class Keybinds : ModSystem
     public ModKeybind ArenasMenu { get; private set; }
     public ModKeybind SpectateMenu { get; private set; }
     public ModKeybind UseAdventureMirror { get; private set; }
+    public ModKeybind StartGame { get; private set; }
 
     public override void Load()
     {
@@ -36,6 +38,7 @@ public class Keybinds : ModSystem
         ArenasMenu = KeybindLoader.RegisterKeybind(Mod, "ArenasMenu", Keys.NumPad7);
         SpectateMenu = KeybindLoader.RegisterKeybind(Mod, "SpectateMenu", Keys.NumPad8);
         UseAdventureMirror = KeybindLoader.RegisterKeybind(Mod, "UseAdventureMirror", Keys.G);
+        StartGame = KeybindLoader.RegisterKeybind(Mod, "StartGame", Keys.F6);
     }
 }
 
@@ -45,6 +48,18 @@ internal class KeybindsPlayer : ModPlayer
     {
         var pointsManager = ModContent.GetInstance<PointsManager>();
         var keybinds = ModContent.GetInstance<Keybinds>();
+
+        if (keybinds.StartGame.JustPressed)
+        {
+            var dialog = ModContent.GetInstance<StartGameSystem>();
+            var game = ModContent.GetInstance<GameManager>();
+            if (dialog.IsActive())
+                dialog.Hide();
+            else if (game.CurrentPhase != GameManager.Phase.Playing && !game._startGameCountdown.HasValue)
+                dialog.ShowStartDialog();
+            else
+                Main.NewText("A match is already running or counting down.", Color.OrangeRed);
+        }
 
         // Scoreboard
         if (keybinds.Scoreboard.JustPressed)
