@@ -182,6 +182,7 @@ public sealed class RuntimeChecks : ModSystem
             Check(match.Players.Single(player => player.Name == a.name).Kills == 1, "Local match records kill");
             var offline = match.Players.Single(player => player.Name == b.name);
             Check(offline.Deaths == 1 && offline.PortalUses == 1, "Disconnected participant remains in local result");
+            CheckGrappleJump(a);
             CheckPowerBomb(a, b, c);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
@@ -193,6 +194,48 @@ public sealed class RuntimeChecks : ModSystem
             Console.WriteLine(exception);
             Environment.Exit(1);
         }
+    }
+
+    private void CheckGrappleJump(Player player)
+    {
+        int originalHeight = Player.jumpHeight;
+        float originalSpeed = Player.jumpSpeed;
+        Player.jumpHeight = 15;
+        Player.jumpSpeed = 5.01f;
+        Projectile hook = Main.projectile[990];
+        hook.SetDefaults(ProjectileID.Hook);
+        hook.owner = player.whoAmI;
+        hook.ai[0] = 2;
+        hook.Center = player.Center;
+        player.grappling[0] = hook.whoAmI;
+        player.grapCount = 1;
+        player.controlJump = player.releaseJump = true;
+        player.controlDown = false;
+        player.velocity = Vector2.Zero;
+        player.GrappleMovement();
+        Mod.Logger.Info($"Measured grapple jump: jump={player.jump}, jumpHeight={Player.jumpHeight}, velocityY={player.velocity.Y}");
+        Check(player.jump == Player.jumpHeight && player.velocity.Y == -Player.jumpSpeed,
+            "Attached hook starts full jump duration with unchanged launch speed");
+        Check(player.grappling[0] == -1 && !player.releaseJump, "Jump releases hooks and consumes jump press");
+        player.gravDir = 1;
+        player.JumpMovement();
+        Check(player.jump == Player.jumpHeight - 1 && player.velocity.Y == -Player.jumpSpeed,
+            "Held jump consumes full duration through vanilla jump movement");
+        player.controlJump = false;
+        player.JumpMovement();
+        Check(player.jump == 0, "Releasing jump still cancels sustained ascent");
+        hook.active = true;
+        hook.Center = player.Center;
+        player.grappling[0] = hook.whoAmI;
+        player.grapCount = 1;
+        player.controlJump = player.releaseJump = player.controlDown = true;
+        player.velocity = Vector2.Zero;
+        player.GrappleMovement();
+        Check(player.jump == 0 && player.grappling[0] == -1,
+            "Down plus jump still detaches without starting a full jump");
+        player.controlDown = false;
+        Player.jumpHeight = originalHeight;
+        Player.jumpSpeed = originalSpeed;
     }
 
     private void CheckPowerBomb(Player owner, Player teammate, Player enemy)

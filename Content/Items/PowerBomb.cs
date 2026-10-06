@@ -8,6 +8,7 @@ using Terraria.ModLoader;
 
 namespace PvPAdventure.Content.Items;
 
+// VANILLA145_BACKPORT: Power Bomb content adapted from the upstream implementation.
 internal class PowerBomb : ModItem
 {
     public override string Texture => "PvPAdventure/Assets/Items/PowerBomb";
