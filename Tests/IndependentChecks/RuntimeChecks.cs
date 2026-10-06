@@ -53,6 +53,22 @@ public sealed class RuntimeChecks : ModSystem
             }
             a.team = b.team = 1;
             c.team = 2;
+            int miningX = Main.spawnTileX + 40;
+            int miningY = Main.spawnTileY;
+            Tile miningTile = Main.tile[miningX, miningY];
+            ushort originalType = miningTile.TileType;
+            miningTile.TileType = TileID.Stone;
+            int miningDamage = (int)Call(typeof(Player), "GetPickaxeDamage", a,
+                miningX, miningY, 100, 0, miningTile);
+            Mod.Logger.Info($"Measured stone mining damage: {miningDamage}");
+            Check(miningDamage == 150, "Stone mining preserves 1.5x damage without crashing");
+            miningTile.TileType = TileID.Dirt;
+            Check((int)Call(typeof(Player), "GetPickaxeDamage", a,
+                miningX, miningY, 100, 0, miningTile) == 300, "Dirt mining preserves 1.5x damage");
+            miningTile.TileType = TileID.Hellstone;
+            Check((int)Call(typeof(Player), "GetPickaxeDamage", a,
+                miningX, miningY, 50, 0, miningTile) == 0, "Insufficient pick power still cannot mine hellstone");
+            miningTile.TileType = originalType;
             GameManager game = ModContent.GetInstance<GameManager>();
             game.CurrentPhase = GameManager.Phase.Waiting;
             void Shop(Player player, byte action, int type = 0, System.Collections.Generic.Dictionary<int, int> preset = null) =>

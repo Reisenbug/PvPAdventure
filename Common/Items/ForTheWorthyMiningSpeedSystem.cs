@@ -50,6 +50,7 @@ public class ForTheWorthyMiningSpeedSystem : ModSystem
             {
                 //ModContent.GetInstance<ForTheWorthyMiningSpeedSystem>().Mod.Logger.Info("Found return in GetPickaxeDamage");
 
+                cursor.Emit(OpCodes.Conv_R4);
                 cursor.Emit(OpCodes.Ldc_R4, 1.5f); //for the worthy mining speed
                 cursor.Emit(OpCodes.Mul);
                 cursor.Emit(OpCodes.Conv_I4);
