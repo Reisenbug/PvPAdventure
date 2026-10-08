@@ -29,9 +29,18 @@ public sealed class KitShopSystem : ModSystem
     private static Dictionary<int, int>[] presets = new Dictionary<int, int>[3];
     private static string PresetPath => Path.Combine(Main.SavePath, "PvPAdventure", "StartingLoadouts.json");
     internal static IndependentConfig Config => ModContent.GetInstance<IndependentConfig>();
-    internal static bool CanShop(Player player) => player.active && !player.dead && !player.ghost &&
-        ModContent.GetInstance<GameManager>().CurrentPhase == GameManager.Phase.Waiting &&
-        player.GetModPlayer<SpawnPlayer>().IsPlayerInSpawnRegion();
+    internal static bool CanShop(Player player) => BlockReason(player) == null;
+
+    internal static string BlockReason(Player player)
+    {
+        if (!player.active || player.dead || player.ghost)
+            return "Starting Kit Shop is only available to living players.";
+        if (ModContent.GetInstance<GameManager>().CurrentPhase != GameManager.Phase.Waiting)
+            return "Starting Kit Shop is only available before a match. F6 opens match controls.";
+        if (!player.GetModPlayer<SpawnPlayer>().IsPlayerInSpawnRegion())
+            return "Return to the spawn area before opening Starting Kit Shop.";
+        return null;
+    }
 
     public override void Load()
     {
@@ -71,8 +80,12 @@ public sealed class KitShopSystem : ModSystem
 
     internal void Toggle()
     {
-        if (!CanShop(Main.LocalPlayer))
+        string reason = BlockReason(Main.LocalPlayer);
+        if (reason != null)
+        {
+            Main.NewText(reason, Color.OrangeRed);
             return;
+        }
         if (ui.CurrentState != null)
             ui.SetState(null);
         else

@@ -52,13 +52,10 @@ internal class KeybindsPlayer : ModPlayer
         if (keybinds.StartGame.JustPressed)
         {
             var dialog = ModContent.GetInstance<StartGameSystem>();
-            var game = ModContent.GetInstance<GameManager>();
             if (dialog.IsActive())
                 dialog.Hide();
-            else if (game.CurrentPhase != GameManager.Phase.Playing && !game._startGameCountdown.HasValue)
-                dialog.ShowStartDialog();
             else
-                Main.NewText("A match is already running or counting down.", Color.OrangeRed);
+                dialog.ShowStartDialog();
         }
 
         // Scoreboard

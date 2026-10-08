@@ -126,6 +126,7 @@ public class GameManager : ModSystem
     }
     public void EndGame()
     {
+        ModContent.GetInstance<PauseManager>().Resume();
         _startGameCountdown = null;
         TimeRemaining = 0;
         CurrentPhase = Phase.Waiting;

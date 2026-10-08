@@ -117,6 +117,14 @@ public class PauseManager : ModSystem
 
     private ulong _blockPauseUntilTick;
 
+    public void Resume()
+    {
+        if (!_paused)
+            return;
+        _paused = false;
+        NetMessage.SendData(MessageID.WorldData);
+    }
+
     public void BlockPausingForSeconds(int seconds)
     {
         if (seconds <= 0)

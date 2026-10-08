@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -58,6 +59,22 @@ public sealed class PortalSystem : ModSystem
     }
 
     internal bool Held => keybind?.Current == true;
+    internal bool Pressed => keybind?.JustPressed == true;
+
+    internal static string CreationBlockReason(Player player)
+    {
+        if (!player.active || player.dead || player.ghost)
+            return "Only living players can create a team portal.";
+        if (!Playing)
+            return "Team portals can only be created during a match. F6 opens match controls.";
+        if (player.GetModPlayer<SpawnPlayer>().IsPlayerInSpawnRegion())
+            return "Leave the spawn area before creating a team portal.";
+        if (!player.inventory.Take(50).Any(item => item.type == ModContent.ItemType<PortalCreatorItem>()))
+            return "No Portal Creator in your inventory. Before the match, use Reset kit in Starting Kit Shop (K).";
+        if (player.velocity.LengthSquared() >= 0.1f)
+            return "Stand still and hold the team portal key to create a portal.";
+        return null;
+    }
 
     public override void ModifyInterfaceLayers(List<GameInterfaceLayer> layers)
     {
@@ -204,8 +221,16 @@ public sealed class PortalPlayer : ModPlayer
 
     public override void ProcessTriggers(TriggersSet triggersSet)
     {
-        if (!ModContent.GetInstance<PortalSystem>().Held || Player.dead)
+        PortalSystem system = ModContent.GetInstance<PortalSystem>();
+        if (!system.Held)
             return;
+        string reason = PortalSystem.CreationBlockReason(Player);
+        if (reason != null)
+        {
+            if (system.Pressed)
+                Main.NewText(reason, Color.OrangeRed);
+            return;
+        }
         int slot = Array.FindIndex(Player.inventory, 0, 50,
             item => item.type == ModContent.ItemType<PortalCreatorItem>());
         if (slot >= 0)

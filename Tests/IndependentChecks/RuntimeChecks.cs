@@ -184,6 +184,7 @@ public sealed class RuntimeChecks : ModSystem
             Check(offline.Deaths == 1 && offline.PortalUses == 1, "Disconnected participant remains in local result");
             CheckGrappleJump(a);
             CheckPowerBomb(a, b, c);
+            CheckMatchControls(a);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -194,6 +195,54 @@ public sealed class RuntimeChecks : ModSystem
             Console.WriteLine(exception);
             Environment.Exit(1);
         }
+    }
+
+    private void CheckMatchControls(Player player)
+    {
+        GameManager game = ModContent.GetInstance<GameManager>();
+        PauseManager pause = ModContent.GetInstance<PauseManager>();
+        Main.netMode = NetmodeID.Server;
+        game.CurrentPhase = GameManager.Phase.Playing;
+        void Command(GameTimerNetHandler.GameTimerPacketType action)
+        {
+            using MemoryStream stream = new();
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)action);
+            stream.Position = 0;
+            GameTimerNetHandler.HandlePacket(new BinaryReader(stream), player.whoAmI);
+        }
+        Check(((string)Call(typeof(KitShopSystem), "BlockReason", null, player)).Contains("before a match"),
+            "Shop explains why a running match blocks access");
+        Command(GameTimerNetHandler.GameTimerPacketType.PauseGame);
+        Check(pause.IsPaused, "Pause command pauses a running match");
+        Command(GameTimerNetHandler.GameTimerPacketType.PauseGame);
+        Check(!pause.IsPaused, "Pause command resumes a paused match");
+        Command(GameTimerNetHandler.GameTimerPacketType.PauseGame);
+        Command(GameTimerNetHandler.GameTimerPacketType.EndGame);
+        Check(game.CurrentPhase == GameManager.Phase.Waiting && game.TimeRemaining == 0 &&
+            !game._startGameCountdown.HasValue && !pause.IsPaused, "End command clears match and pause state");
+        game.StartGame(3600, 10);
+        Command(GameTimerNetHandler.GameTimerPacketType.EndGame);
+        Check(!game._startGameCountdown.HasValue && game.TimeRemaining == 0,
+            "End command cancels countdown without starting a match");
+        player.Center = new Vector2((Main.spawnTileX + 80) * 16, (Main.spawnTileY - 40) * 16);
+        Check(((string)Call(typeof(KitShopSystem), "BlockReason", null, player)).Contains("spawn area"),
+            "Shop explains why wilderness blocks access");
+        Check(((string)Call(typeof(PortalSystem), "CreationBlockReason", null, player)).Contains("during a match"),
+            "Portal explains why waiting blocks creation");
+        game.CurrentPhase = GameManager.Phase.Playing;
+        int slot = Array.FindIndex(player.inventory, item => item.type == ModContent.ItemType<PortalCreatorItem>());
+        Item creator = player.inventory[slot];
+        player.inventory[slot] = new Item();
+        Check(((string)Call(typeof(PortalSystem), "CreationBlockReason", null, player)).Contains("No Portal Creator"),
+            "Portal explains missing creator and how to obtain it");
+        player.inventory[slot] = creator;
+        player.velocity = new Vector2(1, 0);
+        Check(((string)Call(typeof(PortalSystem), "CreationBlockReason", null, player)).Contains("Stand still"),
+            "Portal explains movement restriction");
+        player.velocity = Vector2.Zero;
+        Check(Call(typeof(PortalSystem), "CreationBlockReason", null, player) == null,
+            "Living stationary player with creator in wilderness may create portal");
     }
 
     private void CheckGrappleJump(Player player)
