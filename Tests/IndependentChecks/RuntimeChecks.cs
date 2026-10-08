@@ -234,8 +234,60 @@ public sealed class RuntimeChecks : ModSystem
         Check(player.jump == 0 && player.grappling[0] == -1,
             "Down plus jump still detaches without starting a full jump");
         player.controlDown = false;
+        hook.active = true;
+        hook.Center = player.Center + new Vector2(32, -64);
+        player.grappling[0] = hook.whoAmI;
+        player.grapCount = 1;
+        player.controlJump = player.releaseJump = true;
+        player.velocity = Vector2.Zero;
+        player.jump = 0;
+        player.GrappleMovement();
+        Mod.Logger.Info($"Measured blocked grapple jump: jump={player.jump}, velocityY={player.velocity.Y}");
+        Check(player.jump == Player.jumpHeight && player.velocity.Y == -Player.jumpSpeed,
+            "Blocked stationary player jumps despite upward hook pull");
+        CheckHookCase(player, hook, new Vector2(1.99f, 0), new Vector2(32, -64), false, false, false, true,
+            "Slow movement below two permits grapple jump");
+        CheckHookCase(player, hook, new Vector2(2, 0), new Vector2(32, -64), false, false, false, false,
+            "Speed of two does not start grapple jump even with zero vertical speed");
+        CheckHookCase(player, hook, new Vector2(5, -5), new Vector2(32, -64), false, false, true, false,
+            "Up does not force a jump while moving quickly");
+        CheckHookCase(player, hook, new Vector2(5, 0), new Vector2(32, -64), true, false, false, true,
+            "Floating in water permits jump despite fast horizontal movement");
+        CheckHookCase(player, hook, new Vector2(5, 0.02f), new Vector2(32, -64), true, false, false, true,
+            "Water tolerance follows double conversion of incoming float velocity");
+        CheckHookCase(player, hook, new Vector2(5, 0.021f), new Vector2(32, -64), true, false, false, false,
+            "Vertical water movement outside tolerance only detaches");
+        CheckHookCase(player, hook, Vector2.Zero, new Vector2(32, 64), false, false, false, false,
+            "Downward hook pull from standing only detaches without up");
+        CheckHookCase(player, hook, Vector2.Zero, new Vector2(32, 64), false, false, true, true,
+            "Up permits jumping off downward hook pull from standing");
+        CheckHookCase(player, hook, new Vector2(0, 1), new Vector2(32, 64), false, false, false, true,
+            "Slow falling may jump despite downward hook pull");
+        CheckHookCase(player, hook, Vector2.Zero, new Vector2(32, -64), false, true, true, false,
+            "Down still prevents jump even when up is also pressed");
+        player.controlUp = player.controlDown = player.wet = false;
         Player.jumpHeight = originalHeight;
         Player.jumpSpeed = originalSpeed;
+    }
+
+    private void CheckHookCase(Player player, Projectile hook, Vector2 incoming, Vector2 anchor,
+        bool wet, bool down, bool up, bool expectedJump, string name)
+    {
+        hook.active = true;
+        hook.ai[0] = 2;
+        hook.Center = player.Center + anchor;
+        player.grappling[0] = hook.whoAmI;
+        player.grapCount = 1;
+        player.controlJump = player.releaseJump = true;
+        player.controlDown = down;
+        player.controlUp = up;
+        player.wet = wet;
+        player.velocity = incoming;
+        player.jump = 0;
+        player.GrappleMovement();
+        Mod.Logger.Info($"Measured {name}: incoming={incoming}, jump={player.jump}, velocityY={player.velocity.Y}");
+        Check(player.jump == (expectedJump ? Player.jumpHeight : 0) && player.grappling[0] == -1 &&
+            !player.releaseJump && (!expectedJump || player.velocity.Y == -Player.jumpSpeed), name);
     }
 
     private void CheckPowerBomb(Player owner, Player teammate, Player enemy)
