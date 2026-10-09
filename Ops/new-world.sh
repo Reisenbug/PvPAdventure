@@ -24,10 +24,9 @@ sudo -n docker update --restart=no tmodloader >/dev/null
 trap 'sudo -n docker update --restart=unless-stopped tmodloader >/dev/null 2>&1 || true' EXIT
 
 if [[ $(sudo -n docker inspect tmodloader --format '{{.State.Status}}') == running ]]; then
-  { sleep 1; printf 'save\nexit\n'; sleep 3; } |
-    timeout 120 script -q -e -c 'sudo -n docker attach --sig-proxy=false tmodloader' /dev/null
+  sudo -n docker stop --time 120 tmodloader >/dev/null
 fi
-[[ $(sudo -n docker inspect tmodloader --format '{{.State.Status}}') == exited ]] ||
+[[ $(sudo -n docker inspect tmodloader --format '{{.State.Status}} {{.State.ExitCode}}') == 'exited 0' ]] ||
   { echo "Server did not exit normally; world configuration was not changed. Recovery: $pending" >&2; exit 1; }
 sudo -n cp -a "$base/world/$old_world" "$pending/"
 if [[ -f "$base/world/$old_name.twld" ]]; then
