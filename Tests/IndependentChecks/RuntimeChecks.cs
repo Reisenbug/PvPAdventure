@@ -345,7 +345,11 @@ public sealed class RuntimeChecks : ModSystem
         {
             (ItemID.ManaCrystal, new[] { (ItemID.FallenStar, 3) }, -1),
             (ItemID.DeerThing, new[] { (ItemID.DemoniteOre, 5), (ItemID.Lens, 1), (ItemID.FlinxFur, 3) }, -1),
-            (ItemID.ShroomiteBar, new[] { (ItemID.GlowingMushroom, 1), (ItemID.ChlorophyteBar, 1) }, TileID.Autohammer)
+            (ItemID.ShroomiteBar, new[] { (ItemID.GlowingMushroom, 1), (ItemID.ChlorophyteBar, 1) }, TileID.Autohammer),
+            (ItemID.DemonWings, new[] { (ItemID.SoulofNight, 5), (ItemID.Feather, 3), (ItemID.SoulofFlight, 20) }, TileID.MythrilAnvil),
+            (ItemID.AngelWings, new[] { (ItemID.SoulofLight, 5), (ItemID.Feather, 3), (ItemID.SoulofFlight, 20) }, TileID.MythrilAnvil),
+            (ItemID.FairyWings, new[] { (ItemID.PixieDust, 45), (ItemID.SoulofFlight, 20) }, TileID.MythrilAnvil),
+            (ItemID.Hellforge, new[] { (ItemID.Furnace, 1), (ItemID.Hellstone, 30) }, TileID.Anvils)
         })
         {
             var recipes = Main.recipe.Where(r => r != null && !r.Disabled && r.createItem.type == spec.Item1).ToArray();
@@ -371,6 +375,38 @@ public sealed class RuntimeChecks : ModSystem
             Drops(NPCID.GiantTortoise).Any(d => d.itemId == ItemID.TurtleShell), "Registered turtle shell chance is one half");
         Check(Drops(NPCID.SnowFlinx).Any(d => d.itemId == ItemID.FlinxFur && d.stackMin == 1 && d.stackMax == 1 && d.dropRate == 1f),
             "Snow Flinx has an additional guaranteed fur drop");
+        Check(Main.recipe.Single(r => r != null && !r.Disabled && r.createItem.type == ItemID.Hellforge).DecraftDisabled,
+            "Crafted Hellforge cannot be decrafted");
+        foreach (var spec in new[]
+        {
+            (NPCID.Lihzahrd, ItemID.LihzahrdPowerCell, 30),
+            (NPCID.LihzahrdCrawler, ItemID.LihzahrdPowerCell, 30),
+            (NPCID.FlyingSnake, ItemID.LihzahrdPowerCell, 30),
+            (NPCID.AngryTrapper, ItemID.Uzi, 15),
+            (NPCID.RustyArmoredBonesAxe, ItemID.MaceWhip, 20),
+            (NPCID.RustyArmoredBonesFlail, ItemID.MaceWhip, 20),
+            (NPCID.RustyArmoredBonesSword, ItemID.MaceWhip, 20),
+            (NPCID.RustyArmoredBonesSwordNoArmor, ItemID.MaceWhip, 20),
+            (NPCID.BlueArmoredBones, ItemID.MaceWhip, 20),
+            (NPCID.BlueArmoredBonesMace, ItemID.MaceWhip, 20),
+            (NPCID.BlueArmoredBonesNoPants, ItemID.MaceWhip, 20),
+            (NPCID.BlueArmoredBonesSword, ItemID.MaceWhip, 20),
+            (NPCID.HellArmoredBones, ItemID.MaceWhip, 20),
+            (NPCID.HellArmoredBonesSpikeShield, ItemID.MaceWhip, 20),
+            (NPCID.HellArmoredBonesMace, ItemID.MaceWhip, 20),
+            (NPCID.HellArmoredBonesSword, ItemID.MaceWhip, 20)
+        })
+        {
+            var rates = Drops(spec.Item1).Where(d => d.itemId == spec.Item2).ToArray();
+            Check(rates.Length > 0 && rates.All(d =>
+            {
+                float expected = 1f / spec.Item3;
+                if (spec.Item2 == ItemID.MaceWhip && d.conditions?.Any(c => c is Terraria.GameContent.ItemDropRules.Conditions.IsExpert) == true)
+                    expected = 1f - (1f - expected) * (1f - expected);
+                return Math.Abs(d.dropRate - expected) < 0.000001f;
+            }),
+                $"Registered drop chance for NPC {spec.Item1}, item {spec.Item2}");
+        }
         foreach (int npcType in new[] { NPCID.TheDestroyer, NPCID.SkeletronPrime, NPCID.Retinazer, NPCID.Spazmatism })
         {
             var bars = Drops(npcType).Where(d => d.itemId == ItemID.HallowedBar).ToArray();

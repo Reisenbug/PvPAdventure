@@ -155,7 +155,7 @@ public static class AdventureDropDatabase
             case NPCID.HellArmoredBonesSword:
                 foreach (var drop in drops)
                 {
-                    ModifyDropRate(drop, ItemID.MaceWhip, 1, 10);
+                    ModifyDropRate(drop, ItemID.MaceWhip, 1, 20);
                     ModifyDropRate(drop, ItemID.BoneFeather, 1, 150);
                 }
                 break;
@@ -219,7 +219,7 @@ public static class AdventureDropDatabase
             case NPCID.LihzahrdCrawler:
             case NPCID.FlyingSnake:
                 foreach (var drop in drops)
-                    ModifyDropRate(drop, ItemID.LihzahrdPowerCell, 1, 75);
+                    ModifyDropRate(drop, ItemID.LihzahrdPowerCell, 1, 30);
                 break;
 
             case NPCID.MartianEngineer:
@@ -246,6 +246,7 @@ public static class AdventureDropDatabase
             case NPCID.AngryTrapper:
                 foreach (var drop in drops)
                 {
+                    ModifyDropRate(drop, ItemID.Uzi, 1, 15);
                     ModifyDropRate(drop, ItemID.Vine, 1, 1);
                 }
                 break;

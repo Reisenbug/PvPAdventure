@@ -25,6 +25,9 @@ public class RecipeManager : ModSystem
             ItemID.MoonlordArrow,
             ItemID.ManaCrystal,
             ItemID.DeerThing,
+            ItemID.DemonWings,
+            ItemID.AngelWings,
+            ItemID.FairyWings,
             ItemID.ShroomiteBar,
             ItemID.WormFood,
             ItemID.ChlorophyteBar,
@@ -142,6 +145,33 @@ public class RecipeManager : ModSystem
             .AddIngredient(ItemID.ChlorophyteBar, 3)
             .AddIngredient(ItemID.Ectoplasm, 1)
             .AddTile(TileID.AdamantiteForge)
+            .Register();
+
+        Recipe.Create(ItemID.DemonWings)
+            .AddIngredient(ItemID.SoulofNight, 5)
+            .AddIngredient(ItemID.Feather, 3)
+            .AddIngredient(ItemID.SoulofFlight, 20)
+            .AddTile(TileID.MythrilAnvil)
+            .Register();
+
+        Recipe.Create(ItemID.AngelWings)
+            .AddIngredient(ItemID.SoulofLight, 5)
+            .AddIngredient(ItemID.Feather, 3)
+            .AddIngredient(ItemID.SoulofFlight, 20)
+            .AddTile(TileID.MythrilAnvil)
+            .Register();
+
+        Recipe.Create(ItemID.FairyWings)
+            .AddIngredient(ItemID.PixieDust, 45)
+            .AddIngredient(ItemID.SoulofFlight, 20)
+            .AddTile(TileID.MythrilAnvil)
+            .Register();
+
+        Recipe.Create(ItemID.Hellforge)
+            .AddIngredient(ItemID.Furnace)
+            .AddIngredient(ItemID.Hellstone, 30)
+            .AddTile(TileID.Anvils)
+            .DisableDecraft()
             .Register();
 
         //temp sudo terrablade (no longer used)
