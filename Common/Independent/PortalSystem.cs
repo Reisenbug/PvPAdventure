@@ -113,7 +113,12 @@ public sealed class PortalSystem : ModSystem
         if (Main.netMode == NetmodeID.MultiplayerClient)
         {
             if (action == 3)
-                Main.LocalPlayer.GetModPlayer<PortalPlayer>().Remaining = Math.Max(0, target);
+            {
+                PortalPlayer state = Main.LocalPlayer.GetModPlayer<PortalPlayer>();
+                state.Remaining = Math.Max(0, target);
+                if (state.Remaining == 0)
+                    state.Cancel();
+            }
             return;
         }
         if (sender >= 0 && sender < Main.maxPlayers)
@@ -242,13 +247,26 @@ public sealed class PortalPlayer : ModPlayer
 
     public override void PostUpdate()
     {
+        if (Player.whoAmI == Main.myPlayer && Player.HeldItem.type == ModContent.ItemType<PortalCreatorItem>() &&
+            !Player.controlUseItem && (Player.itemAnimation > 0 || Player.channel || Remaining > 0))
+        {
+            bool active = Remaining > 0;
+            Cancel();
+            if (active && Main.netMode == NetmodeID.MultiplayerClient)
+                PortalSystem.Request(1);
+        }
         if (Remaining <= 0)
             return;
         if (Main.netMode == NetmodeID.MultiplayerClient)
         {
             Remaining--;
             if (Player.whoAmI == Main.myPlayer && !Player.channel)
+            {
+                Cancel();
                 PortalSystem.Request(1);
+            }
+            else if (Remaining == 0)
+                StopUse();
             return;
         }
         if (!PortalSystem.Playing || Player.dead || Player.ghost ||
@@ -261,6 +279,7 @@ public sealed class PortalPlayer : ModPlayer
         if (--Remaining == 0)
         {
             PortalSystem.Create(Player, Origin);
+            StopUse();
             Notify();
         }
     }
@@ -269,8 +288,13 @@ public sealed class PortalPlayer : ModPlayer
     {
         if (Main.netMode != NetmodeID.MultiplayerClient)
             Cancel();
-        else if (Player.whoAmI == Main.myPlayer && Remaining > 0)
-            PortalSystem.Request(1);
+        else if (Player.whoAmI == Main.myPlayer)
+        {
+            bool active = Remaining > 0;
+            Cancel();
+            if (active)
+                PortalSystem.Request(1);
+        }
     }
 
     public override void OnRespawn()
@@ -285,10 +309,21 @@ public sealed class PortalPlayer : ModPlayer
 
     internal void Cancel()
     {
+        StopUse();
         if (Remaining <= 0)
             return;
         Remaining = 0;
         Notify();
+    }
+
+    private void StopUse()
+    {
+        if (Player.HeldItem.type != ModContent.ItemType<PortalCreatorItem>())
+            return;
+        Player.channel = false;
+        Player.controlUseItem = false;
+        Player.itemAnimation = Player.itemAnimationMax = 0;
+        Player.itemTime = Player.itemTimeMax = 0;
     }
 
     internal void Notify()

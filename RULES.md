@@ -1,6 +1,6 @@
 # TPVPA 独立版规则与原版改动
 
-适用版本：PvP Adventure Independent 1.1.11。核对日期：2026-10-09。
+适用版本：PvP Adventure Independent 1.1.12。核对日期：2026-10-09。
 
 ## 1.4.5 回移标记
 

@@ -192,6 +192,7 @@ public sealed class RuntimeChecks : ModSystem
                     tile.LiquidAmount = 0;
                 }
             ModContent.GetInstance<IndependentConfig>().PortalCreationSeconds = 0;
+            a.controlUseItem = a.channel = true;
             Call(typeof(PortalSystem), "Execute", null, a, (byte)0, -1);
             a.GetModPlayer<PortalPlayer>().PostUpdate();
             NPC portal = Main.npc.First(npc => npc.active && npc.ModNPC is TeamPortal);
@@ -226,6 +227,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckPowerBomb(a, b, c);
             CheckMatchControls(a);
             CheckAdminPermissions(a, c);
+            CheckPortalInterruption(a);
             CheckBulkCraft(a);
             MeasureSlopes();
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
@@ -290,6 +292,83 @@ public sealed class RuntimeChecks : ModSystem
         Check(Call(typeof(PortalSystem), "CreationBlockReason", null, player) == null,
             "Living stationary player with creator in wilderness may create portal");
         Call(typeof(PvPAdventure.Common.Security.AdminPermissions), "Grant", null, player.whoAmI, false);
+    }
+
+    private void CheckPortalInterruption(Player player)
+    {
+        Main.netMode = NetmodeID.SinglePlayer;
+        Main.myPlayer = player.whoAmI;
+        player.dead = player.ghost = false;
+        ModContent.GetInstance<GameManager>().CurrentPhase = GameManager.Phase.Playing;
+        player.selectedItem = 0;
+        player.inventory[0] = new Item(ModContent.ItemType<PortalCreatorItem>());
+        var state = player.GetModPlayer<PortalPlayer>();
+        var remaining = typeof(PortalPlayer).GetField("Remaining", BindingFlags.Instance | BindingFlags.NonPublic);
+        var origin = typeof(PortalPlayer).GetField("Origin", BindingFlags.Instance | BindingFlags.NonPublic);
+        void Arm(int ticks = 300)
+        {
+            remaining.SetValue(state, ticks);
+            origin.SetValue(state, player.Center);
+            player.itemAnimation = player.itemAnimationMax = 600;
+            player.itemTime = player.itemTimeMax = 600;
+            player.channel = player.controlUseItem = true;
+        }
+        bool Released() => player.itemAnimation == 0 && player.itemTime == 0 && !player.channel && !player.controlUseItem;
+        Arm();
+        Call(typeof(PortalPlayer), "Cancel", state);
+        Mod.Logger.Info($"PORTAL_CANCEL_MEASURE animation={player.itemAnimation} time={player.itemTime} channel={player.channel} use={player.controlUseItem}");
+        Check(Released(),
+            "Interrupted portal creation releases item animation and channel immediately");
+        Arm(0);
+        player.controlUseItem = false;
+        state.PostUpdate();
+        Check(Released(), "Releasing portal tool before countdown acknowledgement clears stale animation");
+        Arm();
+        player.controlUseItem = false;
+        state.PostUpdate();
+        Check(Released() && (int)remaining.GetValue(state) == 0, "Releasing portal use cancels countdown and unlocks tool");
+        Arm();
+        player.position.X += 3;
+        state.PostUpdate();
+        Check(Released() && (int)remaining.GetValue(state) == 0, "Movement interruption unlocks portal tool");
+        Arm();
+        state.OnHurt(default);
+        Check(Released(), "Damage interruption unlocks portal tool");
+        Arm(1);
+        state.PostUpdate();
+        Check(Released(), "Successful creation releases portal tool animation");
+        using var transport = new MonoMod.RuntimeDetour.Hook(typeof(ModPacket).GetMethod(nameof(ModPacket.Send)),
+            (PacketHook)((original, packet, toClient, ignoreClient) => { }));
+        Main.netMode = NetmodeID.MultiplayerClient;
+        Arm();
+        player.channel = false;
+        state.PostUpdate();
+        Check(Released() && (int)remaining.GetValue(state) == 0, "Client cancellation unlocks immediately before server reply");
+        Arm();
+        using (MemoryStream stream = new())
+        {
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)3);
+            writer.Write(0);
+            stream.Position = 0;
+            Call(typeof(PortalSystem), "Handle", null, new BinaryReader(stream), player.whoAmI);
+        }
+        Check(Released(), "Server cancellation reply clears client item animation");
+        Arm();
+        state.OnHurt(default);
+        Check(Released(), "Client damage unlocks immediately before server reply");
+        Arm(1);
+        state.PostUpdate();
+        Check(Released(), "Client completed countdown unlocks portal tool");
+        player.selectedItem = 1;
+        player.inventory[1] = new Item(ItemID.CopperShortsword);
+        Arm();
+        Call(typeof(PortalPlayer), "Cancel", state);
+        Check(player.itemAnimation == 600 && player.itemTime == 600 && player.channel && player.controlUseItem,
+            "Portal cancellation does not interrupt a different selected item");
+        player.itemAnimation = player.itemTime = 0;
+        player.channel = player.controlUseItem = false;
+        Main.netMode = NetmodeID.SinglePlayer;
     }
 
     private void CheckBulkCraft(Player player)
