@@ -4,6 +4,8 @@
 
 本地基线：`feature/independent-core`，Independent 1.1.13，提交 `9cd9bc9`。上游公开分支：`PylonTeam/PvPAdventure:erkys-features`，1.3，提交 `7816cc891cbd6e3d401741ce3dfb8e4fa37470fe`（2026-10-05）。服务器配置对照为本轮检查时的快照；后续配置可能改变。
 
+补充核实：GitHub 默认分支已为 `Public-Test-Branch`，版本 1.3，提交 `7b371c85f1ad57ff2ca41c01387e218ff149502c`（2026-10-04）。`erkys-features` 在它之后仅多 `49b0260`（床保存、计分栏悬停修复）和 `7816cc8`（CI 修复），不是另一套新版玩法。旧 `master` 的最新提交仍为 2026-04-02，不能代表当前默认分支。
+
 ## 先看结论
 
 新版差异最大的部分是战斗底层，不能只把武器伤害百分比填进旧配置：新版主要依赖武器免疫组、百分比穿甲、弹幕来源和距离规则；Independent 仍保留旧式受击免疫与部分硬编码效果。
