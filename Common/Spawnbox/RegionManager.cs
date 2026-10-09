@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
+using MonoMod.Cil;
 using PvPAdventure.Core.Utilities;
 using SubworldLibrary;
 using System.Collections.Generic;
@@ -33,16 +34,38 @@ public class RegionManager : ModSystem
 
     public override void Load()
     {
-        On_Collision.TileCollision += OnCollisionTileCollision;
+        IL_Player.DryCollision += EditPlayerCollision;
+        IL_Player.WaterCollision += EditPlayerCollision;
+        IL_Player.HoneyCollision += EditPlayerCollision;
+        IL_Player.ShimmerCollision += EditPlayerCollision;
     }
 
-    private Vector2 OnCollisionTileCollision(On_Collision.orig_TileCollision orig, 
-        Vector2 position,Vector2 velocity,int width,int height,bool fallthrough,bool fall2,int gravdir)
+    public override void Unload()
     {
-        // Always call to the original to ensure we set Collision.up and Collision.down, and collide with real tiles
-        // as expected.
-        var collisionVelocity = orig(position, velocity, width, height, fallthrough, fall2, gravdir);
+        IL_Player.DryCollision -= EditPlayerCollision;
+        IL_Player.WaterCollision -= EditPlayerCollision;
+        IL_Player.HoneyCollision -= EditPlayerCollision;
+        IL_Player.ShimmerCollision -= EditPlayerCollision;
+    }
 
+    private void EditPlayerCollision(ILContext il)
+    {
+        var cursor = new ILCursor(il);
+        bool found = false;
+        while (cursor.TryGotoNext(MoveType.Before, instruction => instruction.MatchCall(typeof(Collision), nameof(Collision.TileCollision))))
+        {
+            found = true;
+            cursor.MoveAfterLabels();
+            cursor.Remove();
+            cursor.EmitDelegate<System.Func<Vector2, Vector2, int, int, bool, bool, int, Vector2>>(CollidePlayer);
+        }
+        if (!found)
+            throw new System.InvalidOperationException($"Player collision IL pattern not found: {il.Method.Name}");
+    }
+
+    private Vector2 CollidePlayer(Vector2 position, Vector2 velocity, int width, int height, bool fallthrough, bool fall2, int gravdir)
+    {
+        var collisionVelocity = Collision.TileCollision(position, velocity, width, height, fallthrough, fall2, gravdir);
         var sourceHitbox = new Rectangle((int)position.X, (int)position.Y, width, height).ToTileRectangle();
         var sourceIntersections = GetRegionsIntersecting(sourceHitbox).ToHashSet();
 

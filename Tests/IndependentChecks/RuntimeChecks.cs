@@ -855,8 +855,6 @@ public sealed class RuntimeChecks : ModSystem
         slope.HasTile = true;
         slope.TileType = TileID.Stone;
         var region = ModContent.GetInstance<PvPAdventure.Common.Spawnbox.RegionManager>();
-        var handler = (On_Collision.hook_TileCollision)Delegate.CreateDelegate(typeof(On_Collision.hook_TileCollision), region,
-            region.GetType().GetMethod("OnCollisionTileCollision", BindingFlags.NonPublic | BindingFlags.Instance));
         float Measure(int direction, bool touching = false, float offsetX = 0)
         {
             slope.Slope = direction == 1 ? SlopeType.SlopeDownRight : SlopeType.SlopeDownLeft;
@@ -867,8 +865,10 @@ public sealed class RuntimeChecks : ModSystem
             {
                 Vector2 velocity = new(direction * (touching ? Math.Min(3f, (frame + 1) * 0.08f) : 3f), 0.4f);
                 Collision.StepUp(ref position, ref velocity, 20, 42, ref step, ref offset);
-                velocity = Collision.TileCollision(position, velocity, 20, 42);
-                position += velocity;
+                var player = new Player { position = position, velocity = velocity, gravity = 0.4f };
+                player.DryCollision(false, false);
+                position = player.position;
+                velocity = player.velocity;
                 Vector4 result = Collision.SlopeCollision(position, velocity, 20, 42, 0.4f);
                 position = new Vector2(result.X, result.Y);
             }
@@ -876,7 +876,7 @@ public sealed class RuntimeChecks : ModSystem
         }
         float modRight = Measure(1), modLeft = Measure(-1);
         float cornerModRight = Measure(1, true), cornerModLeft = Measure(-1, true);
-        On_Collision.TileCollision -= handler;
+        region.Unload();
         float vanillaRight, vanillaLeft;
         float cornerVanillaRight, cornerVanillaLeft;
         try
@@ -884,7 +884,7 @@ public sealed class RuntimeChecks : ModSystem
             vanillaRight = Measure(1); vanillaLeft = Measure(-1);
             cornerVanillaRight = Measure(1, true); cornerVanillaLeft = Measure(-1, true);
         }
-        finally { On_Collision.TileCollision += handler; }
+        finally { region.Load(); }
         Mod.Logger.Info($"SLOPE_MEASURE mod right={modRight} left={modLeft}; vanilla right={vanillaRight} left={vanillaLeft}");
         Mod.Logger.Info($"SLOPE_CONTACT runtime={Environment.Version} mod right={cornerModRight} left={cornerModLeft}; vanilla right={cornerVanillaRight} left={cornerVanillaLeft}");
         Check(modRight == vanillaRight && modLeft == vanillaLeft, "Mod region collision matches vanilla on mirrored wilderness slopes");
@@ -892,9 +892,9 @@ public sealed class RuntimeChecks : ModSystem
         {
             modRight = Measure(1, true, offset);
             modLeft = Measure(-1, true, -offset);
-            On_Collision.TileCollision -= handler;
+            region.Unload();
             try { vanillaRight = Measure(1, true, offset); vanillaLeft = Measure(-1, true, -offset); }
-            finally { On_Collision.TileCollision += handler; }
+            finally { region.Load(); }
             Mod.Logger.Info($"SLOPE_CORNER runtime={Environment.Version} offset={offset} mod right={modRight} left={modLeft}; vanilla right={vanillaRight} left={vanillaLeft}");
             Check(modRight == vanillaRight && modLeft == vanillaLeft, $"Exact-corner slope collision preserves vanilla movement at offset {offset}");
         }
@@ -904,20 +904,42 @@ public sealed class RuntimeChecks : ModSystem
             Area = new Rectangle(700, 100, 10, 10), CanEnter = false, CanExit = true
         };
         regions.Add(boundary);
+        Vector2 Move(Vector2 position, Vector2 velocity, int fluid = 0)
+        {
+            var player = new Player { position = position, velocity = velocity };
+            if (fluid == 1) player.WaterCollision(false, false);
+            else if (fluid == 2) player.HoneyCollision(false, false);
+            else if (fluid == 3) player.ShimmerCollision(false, false, false);
+            else player.DryCollision(false, false);
+            return player.velocity;
+        }
         try
         {
             Vector2 leftOutside = new(699 * 16 - 20, 102 * 16);
-            Check(Collision.TileCollision(leftOutside, new Vector2(2, 0), 20, 42).X == 0,
+            Check(Move(leftOutside, new Vector2(2, 0)).X == 0,
                 "Region collision still blocks forbidden entry");
+            Check(Move(leftOutside, new Vector2(32, 0)).X == 0,
+                "High-speed player collision blocks forbidden entry");
+            Check(Move(new Vector2(704 * 16, 99 * 16 - 42), new Vector2(0, 2)).Y == 0,
+                "Player collision blocks vertical entry");
+            for (int fluid = 1; fluid <= 3; fluid++)
+                Check(Move(leftOutside, new Vector2(2, 0), fluid).X == 0,
+                    $"Fluid collision path {fluid} blocks forbidden entry");
             boundary.CanEnter = true;
-            Check(Collision.TileCollision(leftOutside, new Vector2(2, 0), 20, 42).X == 2,
+            Check(Move(leftOutside, new Vector2(2, 0)).X == 2,
                 "Region collision permits allowed entry");
+            for (int fluid = 1; fluid <= 3; fluid++)
+                Check(Move(leftOutside, new Vector2(2, 0), fluid).X == 2,
+                    $"Fluid collision path {fluid} permits allowed entry");
             boundary.CanExit = false;
-            Check(Collision.TileCollision(new Vector2(700 * 16, 102 * 16), new Vector2(-2, 0), 20, 42).X == 0 &&
-                Collision.TileCollision(new Vector2(710 * 16 - 20, 102 * 16), new Vector2(2, 0), 20, 42).X == 0,
+            Check(Move(new Vector2(700 * 16, 102 * 16), new Vector2(-2, 0)).X == 0 &&
+                Move(new Vector2(710 * 16 - 20, 102 * 16), new Vector2(2, 0)).X == 0,
                 "Region collision preserves both inner exit boundaries");
+            Check(Move(new Vector2(704 * 16, 100 * 16), new Vector2(0, -2)).Y == 0 &&
+                Move(new Vector2(704 * 16, 110 * 16 - 42), new Vector2(0, 2)).Y == 0,
+                "Player collision preserves upper and lower inner exit boundaries");
             boundary.CanExit = true;
-            Check(Collision.TileCollision(new Vector2(710 * 16 - 20, 102 * 16), new Vector2(2, 0), 20, 42).X == 2,
+            Check(Move(new Vector2(710 * 16 - 20, 102 * 16), new Vector2(2, 0)).X == 2,
                 "Region collision permits allowed exit");
         }
         finally { regions.Remove(boundary); }
