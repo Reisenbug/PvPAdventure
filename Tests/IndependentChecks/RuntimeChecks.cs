@@ -128,7 +128,7 @@ public sealed class RuntimeChecks : ModSystem
             GameManager game = ModContent.GetInstance<GameManager>();
             game.CurrentPhase = GameManager.Phase.Waiting;
             void Shop(Player player, byte action, int type = 0, System.Collections.Generic.Dictionary<int, int> preset = null) =>
-                Call(typeof(KitShopSystem), "Execute", null, player, action, type, preset);
+                Call(typeof(KitShopSystem), "Execute", null, player, action, type, preset, 1);
             Shop(a, 3);
             var freshKit = a.GetModPlayer<KitShopPlayer>();
             Mod.Logger.Info($"Measured fresh shop: balance={typeof(KitShopPlayer).GetField("Balance", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(freshKit)}, initialized={typeof(KitShopPlayer).GetField("Initialized", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(freshKit)}");
@@ -145,6 +145,11 @@ public sealed class RuntimeChecks : ModSystem
             Check(a.inventory.Count(item => item.type == ItemID.BlandWhip) == 2, "Server rejects purchase beyond budget");
             Check(((string)Call(typeof(KitShopSystem), "BudgetText", null)) == "Starting kit budget: 0 gold",
                 "Spent budget remains a genuine initialized zero balance");
+            Shop(a, 1);
+            Call(typeof(KitShopSystem), "Execute", null, a, (byte)0, ItemID.BlandWhip, null, 10);
+            Check(a.inventory.Count(item => item.type == ItemID.BlandWhip) == 2 &&
+                (int)typeof(KitShopPlayer).GetField("Balance", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(freshKit) == 0,
+                "Bulk starting-kit purchase is limited by authoritative budget");
             Main.netMode = NetmodeID.MultiplayerClient;
             using (MemoryStream budgetStream = new())
             {
@@ -229,6 +234,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckAdminPermissions(a, c);
             CheckPortalInterruption(a);
             CheckBulkCraft(a);
+            CheckBulkBuy(a);
             MeasureSlopes();
             CheckDragonLensPermissions(a, c);
             CheckCombatBalance(a, c);
@@ -776,7 +782,63 @@ public sealed class RuntimeChecks : ModSystem
         Main.CraftItem(recipe);
         Check(Main.mouseItem.stack == Main.mouseItem.maxStack && player.inventory[0].stack == 18,
             "Shift stops when cursor stack fills without losing ingredients");
+        int bombType = ModContent.Find<ModItem>("PvPAdventure/PowerBomb").Type;
+        var bombs = Main.recipe.Where(r => r != null && !r.Disabled && r.createItem.type == bombType).ToArray();
+        Check(bombs.Length == 2 && bombs.All(r => r.createItem.stack == 5), "Both Power Bomb recipes produce five bombs");
+        recipe = bombs.Single(r => r.requiredItem.Any(i => i.type == ItemID.CobaltBar));
+        player.adjTile[TileID.Anvils] = true;
+        foreach (var item in player.inventory) item.TurnToAir();
+        player.inventory[0] = new Item(ItemID.Bomb, 50);
+        player.inventory[1] = new Item(ItemID.CobaltBar, 10);
+        Main.mouseItem = new Item();
         Main.keyState = default;
+        Recipe.FindRecipes();
+        Main.CraftItem(recipe);
+        Check(Main.mouseItem.stack == 5 && player.inventory[0].stack == 45 && player.inventory[1].stack == 9,
+            "Power Bomb craft consumes five bombs and one bar for five outputs");
+        Main.mouseItem = new Item();
+        Main.keyState = new Microsoft.Xna.Framework.Input.KeyboardState(Microsoft.Xna.Framework.Input.Keys.LeftShift);
+        Recipe.FindRecipes();
+        Main.CraftItem(recipe);
+        Check(Main.mouseItem.stack == 45 && player.inventory[0].IsAir && player.inventory[1].IsAir,
+            "Shift crafts remaining nine Power Bomb batches for forty-five outputs");
+        player.adjTile[TileID.Anvils] = false;
+        Main.keyState = default;
+    }
+
+    private void CheckBulkBuy(Player player)
+    {
+        Main.netMode = NetmodeID.SinglePlayer;
+        Main.myPlayer = player.whoAmI;
+        Main.instance.shop[Main.npcShop] = new Chest();
+        Main.mouseLeft = true;
+        Main.cursorOverride = 0;
+        Main.superFastStack = 0;
+        var stock = Main.instance.shop[Main.npcShop].item;
+        void Buy(int coins, bool shift, int supply = 9999, int cursorStack = 0)
+        {
+            foreach (var item in player.inventory) item.TurnToAir();
+            foreach (var bank in new[] { player.bank, player.bank2, player.bank3, player.bank4 })
+                foreach (var item in bank.item) item.TurnToAir();
+            player.inventory[0] = new Item(ItemID.CopperCoin, coins);
+            stock[0] = new Item(ItemID.Torch, supply) { shopCustomPrice = 1, buyOnce = supply != 9999 };
+            Main.mouseItem = cursorStack == 0 ? new Item() : new Item(ItemID.Torch, cursorStack);
+            Main.stackSplit = 0;
+            Main.keyState = shift ? new Microsoft.Xna.Framework.Input.KeyboardState(Microsoft.Xna.Framework.Input.Keys.LeftShift) : default;
+            Call(typeof(Terraria.UI.ItemSlot), "HandleShopSlot", null, stock, 0, false, true);
+        }
+        Buy(20, false);
+        Check(Main.mouseItem.stack == 1 && player.inventory[0].stack == 19, "Normal shop click buys one and pays once");
+        Buy(20, true);
+        Check(Main.mouseItem.stack == 10 && player.inventory[0].stack == 10, "Shift shop click buys ten and pays ten times");
+        Buy(4, true);
+        Check(Main.mouseItem.stack == 4 && player.inventory[0].IsAir, "Shift shop purchase stops at available money");
+        Buy(20, true, 3);
+        Check(Main.mouseItem.stack == 3 && player.inventory[0].stack == 17 && stock[0].IsAir, "Shift shop purchase respects limited stock");
+        Buy(20, true, cursorStack: new Item(ItemID.Torch).maxStack - 2);
+        Check(Main.mouseItem.stack == Main.mouseItem.maxStack && player.inventory[0].stack == 18, "Shift shop purchase stops at cursor stack limit");
+        Main.keyState = default;
+        Main.mouseLeft = false;
     }
 
     private void MeasureSlopes()

@@ -31,7 +31,7 @@ internal class PowerBomb : ModItem
     public override void AddRecipes()
     {
         foreach (int bar in new[] { ItemID.CobaltBar, ItemID.PalladiumBar })
-            CreateRecipe().AddIngredient(ItemID.Bomb, 5).AddIngredient(bar)
+            CreateRecipe(5).AddIngredient(ItemID.Bomb, 5).AddIngredient(bar)
                 .AddTile(TileID.Anvils).Register();
     }
 

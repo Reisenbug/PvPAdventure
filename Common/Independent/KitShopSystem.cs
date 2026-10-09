@@ -132,14 +132,17 @@ public sealed class KitShopSystem : ModSystem
             return;
         }
         if (Main.netMode == NetmodeID.SinglePlayer)
-            Execute(Main.LocalPlayer, action, item, preset);
+            Execute(Main.LocalPlayer, action, item, preset, action == 0 && ItemSlot.ShiftInUse ? 10 : 1);
         else
         {
             ModPacket packet = ModContent.GetInstance<PvPAdventure>().GetPacket();
             packet.Write((byte)AdventurePacketIdentifier.KitShop);
             packet.Write(action);
             if (action == 0)
+            {
                 packet.Write(item);
+                packet.Write((byte)(ItemSlot.ShiftInUse ? 10 : 1));
+            }
             if (action == 2)
                 WriteItems(packet, preset);
             packet.Send();
@@ -171,11 +174,12 @@ public sealed class KitShopSystem : ModSystem
         if (sender < 0 || sender >= Main.maxPlayers || action > 3)
             return;
         int item = action == 0 ? reader.ReadInt32() : 0;
+        int count = action == 0 ? reader.ReadByte() : 1;
         Dictionary<int, int> preset = action == 2 ? ReadItems(reader) : null;
-        Execute(Main.player[sender], action, item, preset);
+        Execute(Main.player[sender], action, item, preset, count);
     }
 
-    private static void Execute(Player player, byte action, int item, Dictionary<int, int> preset)
+    private static void Execute(Player player, byte action, int item, Dictionary<int, int> preset, int quantity = 1)
     {
         string reason = BlockReason(player);
         if (reason != null)
@@ -194,7 +198,8 @@ public sealed class KitShopSystem : ModSystem
         if (action == 1)
             Reset(player, kit);
         else if (action == 0 && kit.Initialized)
-            Buy(player, kit, item);
+            for (int i = 0; i < Math.Clamp(quantity, 1, 10); i++)
+                Buy(player, kit, item);
         else if (action == 2 && TryPrice(preset, Config.StartingGold * 10000,
             49 - ModContent.GetInstance<SSCConfig>().StartItems.Count(entry => !entry.Item.IsUnloaded && entry.Item.Type > 0), out _))
         {
