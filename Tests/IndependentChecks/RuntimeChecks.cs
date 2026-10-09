@@ -857,14 +857,15 @@ public sealed class RuntimeChecks : ModSystem
         var region = ModContent.GetInstance<PvPAdventure.Common.Spawnbox.RegionManager>();
         var handler = (On_Collision.hook_TileCollision)Delegate.CreateDelegate(typeof(On_Collision.hook_TileCollision), region,
             region.GetType().GetMethod("OnCollisionTileCollision", BindingFlags.NonPublic | BindingFlags.Instance));
-        float Measure(int direction)
+        float Measure(int direction, bool touching = false, float offsetX = 0)
         {
             slope.Slope = direction == 1 ? SlopeType.SlopeDownRight : SlopeType.SlopeDownLeft;
-            Vector2 position = new(x * 16 + (direction == 1 ? -60 : 56), (y + 1) * 16 - 42);
+            Vector2 position = new(x * 16 + (direction == 1 ? (touching ? -20 : -60) : (touching ? 16 : 56)) + offsetX,
+                (y + 1) * 16 - 42);
             float start = position.X, step = 1, offset = 0;
             for (int frame = 0; frame < 40; frame++)
             {
-                Vector2 velocity = new(direction * 3, 0.4f);
+                Vector2 velocity = new(direction * (touching ? Math.Min(3f, (frame + 1) * 0.08f) : 3f), 0.4f);
                 Collision.StepUp(ref position, ref velocity, 20, 42, ref step, ref offset);
                 velocity = Collision.TileCollision(position, velocity, 20, 42);
                 position += velocity;
@@ -874,12 +875,52 @@ public sealed class RuntimeChecks : ModSystem
             return (position.X - start) * direction;
         }
         float modRight = Measure(1), modLeft = Measure(-1);
+        float cornerModRight = Measure(1, true), cornerModLeft = Measure(-1, true);
         On_Collision.TileCollision -= handler;
         float vanillaRight, vanillaLeft;
-        try { vanillaRight = Measure(1); vanillaLeft = Measure(-1); }
+        float cornerVanillaRight, cornerVanillaLeft;
+        try
+        {
+            vanillaRight = Measure(1); vanillaLeft = Measure(-1);
+            cornerVanillaRight = Measure(1, true); cornerVanillaLeft = Measure(-1, true);
+        }
         finally { On_Collision.TileCollision += handler; }
         Mod.Logger.Info($"SLOPE_MEASURE mod right={modRight} left={modLeft}; vanilla right={vanillaRight} left={vanillaLeft}");
+        Mod.Logger.Info($"SLOPE_CONTACT runtime={Environment.Version} mod right={cornerModRight} left={cornerModLeft}; vanilla right={cornerVanillaRight} left={cornerVanillaLeft}");
         Check(modRight == vanillaRight && modLeft == vanillaLeft, "Mod region collision matches vanilla on mirrored wilderness slopes");
+        foreach (float offset in new[] { 0f, 0.01f, -0.01f, 0.5f, -0.5f })
+        {
+            modRight = Measure(1, true, offset);
+            modLeft = Measure(-1, true, -offset);
+            On_Collision.TileCollision -= handler;
+            try { vanillaRight = Measure(1, true, offset); vanillaLeft = Measure(-1, true, -offset); }
+            finally { On_Collision.TileCollision += handler; }
+            Mod.Logger.Info($"SLOPE_CORNER runtime={Environment.Version} offset={offset} mod right={modRight} left={modLeft}; vanilla right={vanillaRight} left={vanillaLeft}");
+            Check(modRight == vanillaRight && modLeft == vanillaLeft, $"Exact-corner slope collision preserves vanilla movement at offset {offset}");
+        }
+        var regions = (System.Collections.Generic.List<PvPAdventure.Common.Spawnbox.RegionManager.Region>)region.Regions;
+        var boundary = new PvPAdventure.Common.Spawnbox.RegionManager.Region
+        {
+            Area = new Rectangle(700, 100, 10, 10), CanEnter = false, CanExit = true
+        };
+        regions.Add(boundary);
+        try
+        {
+            Vector2 leftOutside = new(699 * 16 - 20, 102 * 16);
+            Check(Collision.TileCollision(leftOutside, new Vector2(2, 0), 20, 42).X == 0,
+                "Region collision still blocks forbidden entry");
+            boundary.CanEnter = true;
+            Check(Collision.TileCollision(leftOutside, new Vector2(2, 0), 20, 42).X == 2,
+                "Region collision permits allowed entry");
+            boundary.CanExit = false;
+            Check(Collision.TileCollision(new Vector2(700 * 16, 102 * 16), new Vector2(-2, 0), 20, 42).X == 0 &&
+                Collision.TileCollision(new Vector2(710 * 16 - 20, 102 * 16), new Vector2(2, 0), 20, 42).X == 0,
+                "Region collision preserves both inner exit boundaries");
+            boundary.CanExit = true;
+            Check(Collision.TileCollision(new Vector2(710 * 16 - 20, 102 * 16), new Vector2(2, 0), 20, 42).X == 2,
+                "Region collision permits allowed exit");
+        }
+        finally { regions.Remove(boundary); }
     }
 
     private void CheckAdminPermissions(Player owner, Player guest)
