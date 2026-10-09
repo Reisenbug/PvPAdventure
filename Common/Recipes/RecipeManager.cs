@@ -23,6 +23,8 @@ public class RecipeManager : ModSystem
         int[] itemsToRemove = new int[]
         {
             ItemID.MoonlordArrow,
+            ItemID.ManaCrystal,
+            ItemID.DeerThing,
             ItemID.ShroomiteBar,
             ItemID.WormFood,
             ItemID.ChlorophyteBar,
@@ -46,6 +48,16 @@ public class RecipeManager : ModSystem
                 recipe.DisableRecipe();
             }
         }
+
+        Recipe.Create(ItemID.ManaCrystal)
+            .AddIngredient(ItemID.FallenStar, 3)
+            .Register();
+
+        Recipe.Create(ItemID.DeerThing)
+            .AddIngredient(ItemID.DemoniteOre, 5)
+            .AddIngredient(ItemID.Lens, 1)
+            .AddIngredient(ItemID.FlinxFur, 3)
+            .Register();
 
         // Headstone Recipe
         Recipe.Create(ItemID.Headstone)
@@ -105,7 +117,7 @@ public class RecipeManager : ModSystem
             .Register();
         // Make Shroomite Bars cheaper
         Recipe.Create(ItemID.ShroomiteBar)
-            .AddIngredient(ItemID.GlowingMushroom, 3)
+            .AddIngredient(ItemID.GlowingMushroom, 1)
             .AddIngredient(ItemID.ChlorophyteBar, 1)
             .AddTile(TileID.Autohammer)
             .Register();

@@ -234,6 +234,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckCombatBalance(a, c);
             CheckNamedAdministrator(c);
             CheckArmorEnergy(a, c);
+            CheckRecipesAndResources();
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -336,6 +337,46 @@ public sealed class RuntimeChecks : ModSystem
         Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(player.whoAmI),
             "Reused player slot does not inherit named administrator permission");
         Main.netMode = NetmodeID.SinglePlayer;
+    }
+
+    private void CheckRecipesAndResources()
+    {
+        foreach (var spec in new[]
+        {
+            (ItemID.ManaCrystal, new[] { (ItemID.FallenStar, 3) }, -1),
+            (ItemID.DeerThing, new[] { (ItemID.DemoniteOre, 5), (ItemID.Lens, 1), (ItemID.FlinxFur, 3) }, -1),
+            (ItemID.ShroomiteBar, new[] { (ItemID.GlowingMushroom, 1), (ItemID.ChlorophyteBar, 1) }, TileID.Autohammer)
+        })
+        {
+            var recipes = Main.recipe.Where(r => r != null && !r.Disabled && r.createItem.type == spec.Item1).ToArray();
+            Check(recipes.Length == 1, $"Exactly one active recipe for {spec.Item1}");
+            var recipe = recipes.Single();
+            var ingredients = recipe.requiredItem.Where(i => !i.IsAir).ToArray();
+            Check(recipe.createItem.stack == 1 && ingredients.Length == spec.Item2.Length &&
+                spec.Item2.All(i => ingredients.Any(actual => actual.type == i.Item1 && actual.stack == i.Item2)),
+                $"Registered ingredients for {spec.Item1}");
+            Check(spec.Item3 < 0 ? recipe.requiredTile.Count == 0 : recipe.requiredTile.SequenceEqual(new[] { spec.Item3 }),
+                $"Registered station for {spec.Item1}");
+        }
+
+        System.Collections.Generic.List<Terraria.GameContent.ItemDropRules.DropRateInfo> Drops(int npcType)
+        {
+            var rates = new System.Collections.Generic.List<Terraria.GameContent.ItemDropRules.DropRateInfo>();
+            foreach (var rule in Main.ItemDropsDB.GetRulesForNPCID(npcType, false))
+                rule.ReportDroprates(rates, new Terraria.GameContent.ItemDropRules.DropRateInfoChainFeed(1f));
+            return rates;
+        }
+
+        Check(Drops(NPCID.GiantTortoise).Where(d => d.itemId == ItemID.TurtleShell).All(d => d.dropRate == 0.5f) &&
+            Drops(NPCID.GiantTortoise).Any(d => d.itemId == ItemID.TurtleShell), "Registered turtle shell chance is one half");
+        Check(Drops(NPCID.SnowFlinx).Any(d => d.itemId == ItemID.FlinxFur && d.stackMin == 1 && d.stackMax == 1 && d.dropRate == 1f),
+            "Snow Flinx has an additional guaranteed fur drop");
+        foreach (int npcType in new[] { NPCID.TheDestroyer, NPCID.SkeletronPrime, NPCID.Retinazer, NPCID.Spazmatism })
+        {
+            var bars = Drops(npcType).Where(d => d.itemId == ItemID.HallowedBar).ToArray();
+            Check(bars.Length > 0 && bars.All(d => d.stackMin == 20 && d.stackMax == 30),
+                $"Registered mechanical boss bars range for {npcType}");
+        }
     }
 
     private void CheckArmorEnergy(Player attacker, Player target)

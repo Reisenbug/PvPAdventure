@@ -51,6 +51,9 @@ public static class AdventureDropDatabase
 
         switch (npc.type)
         {
+            case NPCID.SnowFlinx:
+                npcLoot.Add(ItemDropRule.Common(ItemID.FlinxFur, 1));
+                break;
             case NPCID.BoneLee:
                 foreach (var drop in drops)
                     ModifyDropRate(drop, ItemID.Tabi, 1, 1);
@@ -75,7 +78,7 @@ public static class AdventureDropDatabase
 
             case NPCID.GiantTortoise:
                 foreach (var drop in drops)
-                    ModifyDropRate(drop, ItemID.TurtleShell, 1, 3);
+                    ModifyDropRate(drop, ItemID.TurtleShell, 1, 2);
                 break;
             case NPCID.Psycho:
                 foreach (var drop in drops)
@@ -524,7 +527,7 @@ public static class AdventureDropDatabase
             case NPCID.TheDestroyer:
                 npcLoot.RemoveWhere(drop =>
                     (drop is CommonDrop commonDrop && commonDrop.itemId == ItemID.HallowedBar));
-                npcLoot.Add(ItemDropRule.Common(ItemID.HallowedBar, 1, 18, 30));
+                npcLoot.Add(ItemDropRule.Common(ItemID.HallowedBar, 1, 20, 30));
 
                 // Remove existing soul drops
                 npcLoot.RemoveWhere(drop =>
@@ -535,7 +538,7 @@ public static class AdventureDropDatabase
             case NPCID.SkeletronPrime:
                 npcLoot.RemoveWhere(drop =>
                     (drop is CommonDrop commonDrop && commonDrop.itemId == ItemID.HallowedBar));
-                npcLoot.Add(ItemDropRule.Common(ItemID.HallowedBar, 1, 18, 30));
+                npcLoot.Add(ItemDropRule.Common(ItemID.HallowedBar, 1, 20, 30));
 
                 npcLoot.RemoveWhere(drop =>
                     (drop is CommonDrop commonDrop && commonDrop.itemId == ItemID.SoulofFright));
@@ -548,7 +551,7 @@ public static class AdventureDropDatabase
 
                 npcLoot.Add(ItemDropRule.ByCondition(
                     new Conditions.LegacyHack_IsBossAndNotExpert(),
-                    ItemID.HallowedBar, 1, 18, 30));
+                    ItemID.HallowedBar, 1, 20, 30));
 
                 npcLoot.Add(ItemDropRule.ByCondition(
                     new Conditions.LegacyHack_IsBossAndNotExpert(),
