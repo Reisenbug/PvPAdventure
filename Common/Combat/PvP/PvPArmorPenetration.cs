@@ -3,6 +3,7 @@ using System;
 using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
+using Terraria.ModLoader.Config;
 
 namespace PvPAdventure.Common.Combat.PvP;
 
@@ -23,9 +24,18 @@ internal class PvPArmorPenetration : ModPlayer
 
         var config = ModContent.GetInstance<ServerConfig>();
 
-        // Flat armor penetration adjustments for specific weapons (unchanged behavior).
         Item sourceItem = modifiers.DamageSource.SourceItem;
-        if (sourceItem != null && !sourceItem.IsAir)
+        var penetration = config.WeaponBalance.ArmorPenetration;
+        float itemAP = 0f;
+        bool configuredItem = sourceItem != null && !sourceItem.IsAir && penetration.ItemAP.TryGetValue(new ItemDefinition(sourceItem.type), out itemAP);
+        if (configuredItem)
+            modifiers.ScalingArmorPenetration += itemAP;
+
+        int projectileType = modifiers.DamageSource.SourceProjectileType;
+        if (projectileType != ProjectileID.None && penetration.ProjectileAP.TryGetValue(new(projectileType), out float projectileAP))
+            modifiers.ScalingArmorPenetration += projectileAP;
+
+        if (!configuredItem && sourceItem != null && !sourceItem.IsAir)
         {
             if (sourceItem.type == ItemID.Flamethrower)
                 modifiers.ArmorPenetration += 15;

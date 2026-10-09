@@ -207,7 +207,7 @@ internal class CombatPlayer : ModPlayer
         if (!modifiers.PvP)
             return;
 
-        if (modifiers.DamageSource.SourcePlayerIndex < 0)
+        if ((uint)modifiers.DamageSource.SourcePlayerIndex >= (uint)Main.maxPlayers)
             return;
 
         var sourcePlayer = Main.player[modifiers.DamageSource.SourcePlayerIndex];

@@ -231,6 +231,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckBulkCraft(a);
             MeasureSlopes();
             CheckDragonLensPermissions(a, c);
+            CheckCombatBalance(a, c);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -241,6 +242,67 @@ public sealed class RuntimeChecks : ModSystem
             Console.WriteLine(exception);
             Environment.Exit(1);
         }
+    }
+
+    private void CheckCombatBalance(Player attacker, Player target)
+    {
+        var config = ModContent.GetInstance<ServerConfig>();
+        attacker.active = target.active = true;
+        attacker.hostile = target.hostile = true;
+        attacker.team = 1;
+        target.team = 2;
+        attacker.ghostHeal = false;
+        attacker.inventory[0] = new Item(ItemID.DaedalusStormbow);
+        attacker.selectedItem = 0;
+        int index = Projectile.NewProjectile(attacker.GetSource_ItemUse(attacker.HeldItem), attacker.Center,
+            Vector2.Zero, ProjectileID.ChlorophyteArrow, 100, 0, attacker.whoAmI);
+        Projectile shot = Main.projectile[index];
+        var source = shot.GetGlobalProjectile<PvPAdventure.Common.Statistics.StatisticsProjectile>();
+        Check(Terraria.DataStructures.PlayerDeathReason.ByProjectile(attacker.whoAmI, index).SourceItem.type == ItemID.DaedalusStormbow,
+            "Projectile records firing weapon rather than ammunition");
+        attacker.inventory[0].SetDefaults(ItemID.CopperShortsword);
+        var reason = Terraria.DataStructures.PlayerDeathReason.ByProjectile(attacker.whoAmI, index);
+        Check(reason.SourceItem.type == ItemID.DaedalusStormbow,
+            "Changing weapons after firing preserves original projectile source");
+        Player.HurtModifiers modifiers = new() { DamageSource = reason, PvP = true };
+        PlayerLoader.ModifyHurt(target, ref modifiers);
+        Mod.Logger.Info($"BALANCE_MEASURE stormbow/chlorophyte multiplier={modifiers.IncomingDamageMultiplier.Value}");
+        Check(Math.Abs(modifiers.IncomingDamageMultiplier.Value - 0.175f) < 0.00001f,
+            "Stormbow 35 percent and chlorophyte arrow 50 percent apply exactly once");
+        int childIndex = Projectile.NewProjectile(shot.GetSource_FromThis(), shot.Center, Vector2.Zero,
+            ProjectileID.HolyArrow, 100, 0, attacker.whoAmI);
+        Projectile child = Main.projectile[childIndex];
+        Check(Terraria.DataStructures.PlayerDeathReason.ByProjectile(attacker.whoAmI, childIndex).SourceItem.type == ItemID.DaedalusStormbow,
+            "Child projectile inherits firing weapon");
+        using MemoryStream stream = new();
+        using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+        source.SendExtraAI(shot, null, writer);
+        stream.Position = 0;
+        var remote = child.GetGlobalProjectile<PvPAdventure.Common.Statistics.StatisticsProjectile>();
+        remote.ReceiveExtraAI(shot, null, new BinaryReader(stream));
+        Check(Terraria.DataStructures.PlayerDeathReason.ByProjectile(attacker.whoAmI, childIndex).SourceItem.type == ItemID.DaedalusStormbow,
+            "Projectile weapon survives network serialization");
+        reason = Terraria.DataStructures.PlayerDeathReason.ByProjectile(target.whoAmI, index);
+        Check(reason.SourceItem == null,
+            "Mismatched projectile owner cannot supply weapon source");
+        reason = Terraria.DataStructures.PlayerDeathReason.ByPlayerItem(attacker.whoAmI, new Item(ItemID.CrystalVileShard));
+        modifiers = new() { DamageSource = reason, PvP = true };
+        PlayerLoader.ModifyHurt(target, ref modifiers);
+        Mod.Logger.Info($"BALANCE_MEASURE vile shard scalingAP={modifiers.ScalingArmorPenetration.Value}, flatAP={modifiers.ArmorPenetration.Value}");
+        Check(Math.Abs(modifiers.ScalingArmorPenetration.Value - 0.33f) < 0.00001f && modifiers.ArmorPenetration.Value == 0,
+            "Configured percent penetration replaces legacy flat penetration");
+        modifiers = new() { DamageSource = reason, PvP = false };
+        PlayerLoader.ModifyHurt(target, ref modifiers);
+        Check(modifiers.ScalingArmorPenetration.Value == 0 && modifiers.IncomingDamageMultiplier.Value == 1,
+            "PvP balance leaves PvE damage and penetration unchanged");
+        reason = Terraria.DataStructures.PlayerDeathReason.ByProjectile(attacker.whoAmI, childIndex);
+        config.WeaponBalance.Damage.ItemDamage[new(ItemID.DaedalusStormbow)] = 0.7f;
+        modifiers = new() { DamageSource = reason, PvP = true };
+        PlayerLoader.ModifyHurt(target, ref modifiers);
+        Check(Math.Abs(modifiers.IncomingDamageMultiplier.Value - 0.7f) < 0.00001f,
+            "Server configuration overrides shipped weapon multiplier");
+        config.WeaponBalance.Damage.ItemDamage[new(ItemID.DaedalusStormbow)] = 0.35f;
+        shot.active = child.active = false;
     }
 
     private void CheckMatchControls(Player player)

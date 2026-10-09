@@ -209,11 +209,11 @@ public class ServerConfig : ModConfig
         {
             [Expand(false, false)]
             [CustomModConfigItem(typeof(DefinitionDictionaryElement))]
-            public Dictionary<ItemDefinition, float> ItemDamage { get; set; } = [];
+            public Dictionary<ItemDefinition, float> ItemDamage { get; set; } = WeaponBalanceDefaults.ItemDamage();
 
             [Expand(false, false)]
             [CustomModConfigItem(typeof(DefinitionDictionaryElement))]
-            public Dictionary<ProjectileDefinition, float> ProjectileDamage { get; set; } = [];
+            public Dictionary<ProjectileDefinition, float> ProjectileDamage { get; set; } = WeaponBalanceDefaults.ProjectileDamage();
         }
 
         public class ArmorPenetrationConfig
@@ -222,13 +222,13 @@ public class ServerConfig : ModConfig
             [Range(0.0f, 1.0f)]
             [Expand(false, false)]
             [CustomModConfigItem(typeof(DefinitionDictionaryElement))]
-            public Dictionary<ItemDefinition, float> ItemAP { get; set; } = [];
+            public Dictionary<ItemDefinition, float> ItemAP { get; set; } = WeaponBalanceDefaults.ItemAP();
 
             [Increment(0.01f)]
             [Range(0.0f, 1.0f)]
             [Expand(false, false)]
             [CustomModConfigItem(typeof(DefinitionDictionaryElement))]
-            public Dictionary<ProjectileDefinition, float> ProjectileAP { get; set; } = [];
+            public Dictionary<ProjectileDefinition, float> ProjectileAP { get; set; } = WeaponBalanceDefaults.ProjectileAP();
         }
         public class KnockbackConfig
         {

@@ -1,11 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System.IO;
 using Terraria;
 using Terraria.DataStructures;
 using Terraria.ModLoader;
+using Terraria.ModLoader.IO;
 
 namespace PvPAdventure.Common.Statistics;
 
-internal class StatisticsProjectile : GlobalProjectile
+public class StatisticsProjectile : GlobalProjectile
 {
     private Item sourceItem;
 
@@ -27,15 +28,26 @@ internal class StatisticsProjectile : GlobalProjectile
         // if that source is our parent projectile, take its item.
         var item = source switch
         {
-            EntitySource_ItemUse sourceItemUse => sourceItemUse.Item,
+            IEntitySource_WithStatsFromItem sourceItemUse when sourceItemUse.Player.whoAmI == projectile.owner => sourceItemUse.Item,
             EntitySource_Parent sourceParent when sourceParent.Entity is Projectile parentProjectile &&
-                                                  parentProjectile.whoAmI != projectile.whoAmI => parentProjectile
+                                                  parentProjectile.whoAmI != projectile.whoAmI &&
+                                                  parentProjectile.owner == projectile.owner => parentProjectile
                 .GetGlobalProjectile<StatisticsProjectile>()
                 .sourceItem,
             _ => null
         };
 
-        projectile.GetGlobalProjectile<StatisticsProjectile>().sourceItem = item;
+        sourceItem = item?.Clone();
+    }
+
+    public override void SendExtraAI(Projectile projectile, BitWriter bitWriter, BinaryWriter binaryWriter)
+    {
+        ItemIO.Send(sourceItem ?? new Item(), binaryWriter);
+    }
+
+    public override void ReceiveExtraAI(Projectile projectile, BitReader bitReader, BinaryReader binaryReader)
+    {
+        sourceItem = ItemIO.Receive(binaryReader);
     }
 
     private PlayerDeathReason OnPlayerDeathReasonByProjectile(On_PlayerDeathReason.orig_ByProjectile orig,
@@ -43,7 +55,9 @@ internal class StatisticsProjectile : GlobalProjectile
     {
         var self = orig(playerindex, projectileindex);
 
-        self.SourceItem = Main.projectile[projectileindex].GetGlobalProjectile<StatisticsProjectile>().sourceItem;
+        Projectile projectile = Main.projectile[projectileindex];
+        if (projectile.owner == playerindex)
+            self.SourceItem = projectile.GetGlobalProjectile<StatisticsProjectile>().sourceItem;
 
         return self;
     }
