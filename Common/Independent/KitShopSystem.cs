@@ -47,6 +47,8 @@ public sealed class KitShopSystem : ModSystem
 
     internal static string BlockReason(Player player)
     {
+        if (!Config.StartingShopEnabled)
+            return "Starting Kit Shop is disabled on this server.";
         if (!player.active || player.dead || player.ghost)
             return "Starting Kit Shop is only available to living players.";
         if (ModContent.GetInstance<GameManager>().CurrentPhase != GameManager.Phase.Waiting)
@@ -231,9 +233,6 @@ public sealed class KitShopSystem : ModSystem
             item.TurnToAir();
         player.trashItem.TurnToAir();
         StartingItems.ApplyStartItems(player);
-        int slot = Array.FindIndex(player.inventory, 0, 50, item => item.IsAir);
-        if (slot >= 0)
-            player.inventory[slot] = new Item(ModContent.ItemType<PortalCreatorItem>());
         kit.Initialized = true;
         kit.Balance = Config.StartingGold * 10000;
         kit.Purchases.Clear();

@@ -28,9 +28,6 @@ internal class GhostCommand : ModCommand
     public override void Action(CommandCaller caller, string input, string[] args)
     {
         // Toggle ghost mode.
-        if (Main.LocalPlayer.ghost) 
-            Main.LocalPlayer.ghost = false;
-        else 
-            Main.LocalPlayer.ghost = true;
+        SpectatorBridge.RequestToggleMode(Main.myPlayer);
     }
 }

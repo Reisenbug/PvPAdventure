@@ -171,6 +171,8 @@ internal sealed class SpectatorUIState : UIState
 
     private static void ToggleGhostState()
     {
+        if (!Common.Security.AdminPermissions.RequireLocal())
+            return;
         Player local = Main.LocalPlayer;
         if (local is null || !local.active)
             return;

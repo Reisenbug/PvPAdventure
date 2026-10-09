@@ -75,6 +75,8 @@ internal sealed class SpectatorSystem : ModSystem
 
     public static void RequestSetLocalMode(PlayerMode mode)
     {
+        if (!Common.Security.AdminPermissions.RequireLocal())
+            return;
         if (Main.myPlayer < 0 || Main.myPlayer >= Main.maxPlayers)
             return;
 
@@ -90,6 +92,8 @@ internal sealed class SpectatorSystem : ModSystem
 
     public static void RequestSetMode(int slot, PlayerMode mode)
     {
+        if (Main.netMode != NetmodeID.Server && !Common.Security.AdminPermissions.RequireLocal())
+            return;
         if (slot < 0 || slot >= Main.maxPlayers)
             return;
 
@@ -141,6 +145,8 @@ internal sealed class SpectatorSystem : ModSystem
             return;
 
         Player local = LocalPlayerOrNull();
+        if (local?.whoAmI == slot)
+            local.ghost = mode == PlayerMode.Spectator;
         if (local?.whoAmI == slot && mode != PlayerMode.Spectator)
             local.GetModPlayer<SpectatorPlayer>().ClearTarget();
     }

@@ -22,6 +22,25 @@ public static class GameTimerNetHandler
     {
         var subPacket = (GameTimerPacketType)reader.ReadByte();
 
+        if (Main.netMode == NetmodeID.Server && !Common.Security.AdminPermissions.HasAccess(whoAmI))
+        {
+            switch (subPacket)
+            {
+                case GameTimerPacketType.StartGame:
+                    reader.ReadInt32();
+                    reader.ReadInt32();
+                    break;
+                case GameTimerPacketType.AdjustGameTime:
+                    reader.ReadInt32();
+                    break;
+                case GameTimerPacketType.SetPoints:
+                    reader.ReadByte();
+                    reader.ReadInt32();
+                    break;
+            }
+            return;
+        }
+
         switch (subPacket)
         {
             case GameTimerPacketType.PauseGame:

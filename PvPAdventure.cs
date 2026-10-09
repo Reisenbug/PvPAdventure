@@ -113,6 +113,10 @@ public class PvPAdventure : Mod
                 Common.Independent.PortalSystem.Handle(r, whoAmI);
                 break;
 
+            case AdventurePacketIdentifier.AdminPermissions:
+                Common.Security.AdminPermissions.Handle(r, whoAmI);
+                break;
+
             default:
                 Log.Warn($"Unknown packet id: {id}");
                 break;

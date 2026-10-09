@@ -42,7 +42,7 @@ public sealed class SpectatorUISystem : ModSystem
 
         // If config wants it to open, then open!
         var config = ModContent.GetInstance<SpectatorConfig>();
-        if (config.IsSpectateEnabled && !config.ForcePlayersToSpectateWhenJoining)
+        if (config.IsSpectateEnabled && !config.ForcePlayersToSpectateWhenJoining && Common.Security.AdminPermissions.LocalAdmin)
         {
             ToggleSpectateJoinUI();
         }
@@ -50,6 +50,8 @@ public sealed class SpectatorUISystem : ModSystem
 
     public static void EnterPlayerMode()
     {
+        if (!Common.Security.AdminPermissions.RequireLocal())
+            return;
         SpectatorSystem.RequestSetLocalMode(PlayerMode.Player);
         CloseJoinUI();
         Main.LocalPlayer.ghost = false;
@@ -58,6 +60,8 @@ public sealed class SpectatorUISystem : ModSystem
 
     public static void EnterSpectateMode()
     {
+        if (!Common.Security.AdminPermissions.RequireLocal())
+            return;
         SpectatorSystem.RequestSetLocalMode(PlayerMode.Spectator);
         CloseJoinUI();
         Main.LocalPlayer.ghost = true;
@@ -79,6 +83,8 @@ public sealed class SpectatorUISystem : ModSystem
 
     public static void ToggleSpectateJoinUI()
     {
+        if (!Common.Security.AdminPermissions.RequireLocal())
+            return;
         spectatorState?.ToggleJoinPanel();
     }
 

@@ -215,6 +215,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckGrappleJump(a);
             CheckPowerBomb(a, b, c);
             CheckMatchControls(a);
+            CheckAdminPermissions(a, c);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -232,6 +233,9 @@ public sealed class RuntimeChecks : ModSystem
         GameManager game = ModContent.GetInstance<GameManager>();
         PauseManager pause = ModContent.GetInstance<PauseManager>();
         Main.netMode = NetmodeID.Server;
+        using var adminTransport = new MonoMod.RuntimeDetour.Hook(typeof(ModPacket).GetMethod(nameof(ModPacket.Send)),
+            (PacketHook)((original, packet, toClient, ignoreClient) => { }));
+        Call(typeof(PvPAdventure.Common.Security.AdminPermissions), "Grant", null, player.whoAmI, true);
         game.CurrentPhase = GameManager.Phase.Playing;
         void Command(GameTimerNetHandler.GameTimerPacketType action)
         {
@@ -273,6 +277,129 @@ public sealed class RuntimeChecks : ModSystem
         player.velocity = Vector2.Zero;
         Check(Call(typeof(PortalSystem), "CreationBlockReason", null, player) == null,
             "Living stationary player with creator in wilderness may create portal");
+        Call(typeof(PvPAdventure.Common.Security.AdminPermissions), "Grant", null, player.whoAmI, false);
+    }
+
+    private void CheckAdminPermissions(Player owner, Player guest)
+    {
+        Main.netMode = NetmodeID.Server;
+        using var transport = new MonoMod.RuntimeDetour.Hook(typeof(ModPacket).GetMethod(nameof(ModPacket.Send)),
+            (PacketHook)((original, packet, toClient, ignoreClient) => { }));
+        Type permissions = typeof(PvPAdventure.Common.Security.AdminPermissions);
+        Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(guest.whoAmI), "Guest starts without administrator permission");
+        string password = File.ReadAllText(Path.Combine(Main.SavePath, "PvPAdventure", "AdminPassword.txt")).Trim();
+        Check(!(bool)Call(permissions, "Authenticate", null, "wrong") && (bool)Call(permissions, "Authenticate", null, password),
+            "Server-only administrator password rejects invalid credentials and accepts stored credentials");
+        var game = ModContent.GetInstance<GameManager>();
+        game.CurrentPhase = GameManager.Phase.Playing;
+        using (MemoryStream stream = new())
+        {
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)GameTimerNetHandler.GameTimerPacketType.EndGame);
+            stream.Position = 0;
+            GameTimerNetHandler.HandlePacket(new BinaryReader(stream), guest.whoAmI);
+        }
+        Check(game.CurrentPhase == GameManager.Phase.Playing, "Guest cannot end a running match by sending a packet");
+        game.EndGame();
+        using (MemoryStream stream = new())
+        {
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)GameTimerNetHandler.GameTimerPacketType.StartGame);
+            writer.Write(3600);
+            writer.Write(10);
+            stream.Position = 0;
+            GameTimerNetHandler.HandlePacket(new BinaryReader(stream), guest.whoAmI);
+            Check(!game._startGameCountdown.HasValue && stream.Position == stream.Length,
+                "Guest cannot start a match and rejected packet is fully consumed");
+        }
+        game.CurrentPhase = GameManager.Phase.Playing;
+        using (MemoryStream stream = new())
+        {
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)GameTimerNetHandler.GameTimerPacketType.PauseGame);
+            stream.Position = 0;
+            GameTimerNetHandler.HandlePacket(new BinaryReader(stream), guest.whoAmI);
+        }
+        Check(!ModContent.GetInstance<PauseManager>().IsPaused, "Guest cannot pause a match");
+        int timeBefore = game.TimeRemaining;
+        using (MemoryStream stream = new())
+        {
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)GameTimerNetHandler.GameTimerPacketType.AdjustGameTime);
+            writer.Write(1234);
+            stream.Position = 0;
+            GameTimerNetHandler.HandlePacket(new BinaryReader(stream), guest.whoAmI);
+        }
+        Check(game.TimeRemaining == timeBefore, "Guest cannot change match duration");
+        using (MemoryStream stream = new())
+        {
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)2);
+            writer.Write((byte)1);
+            writer.Write(guest.whoAmI);
+            stream.Position = 0;
+            Call(permissions, "Handle", null, new BinaryReader(stream), guest.whoAmI);
+            Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(guest.whoAmI) && stream.Position == stream.Length,
+                "Forged client permission sync cannot grant administrator access");
+        }
+        string[] configNames = { "ServerConfig", "SSCConfig", "IndependentConfig", "SpectatorConfig", "ArenasConfig" };
+        foreach (string name in configNames)
+        {
+            Type configType = typeof(IndependentConfig).Assembly.GetType("PvPAdventure.Core.Config." + name);
+            var config = (Terraria.ModLoader.Config.ModConfig)typeof(ModContent).GetMethod("GetInstance")
+                .MakeGenericMethod(configType).Invoke(null, null);
+            Terraria.Localization.NetworkText message = null;
+            Check(!config.AcceptClientChanges(config, guest.whoAmI, ref message), "Guest cannot edit " + name);
+        }
+        ModContent.GetInstance<IndependentConfig>().StartingShopEnabled = false;
+        Check(((string)Call(typeof(KitShopSystem), "BlockReason", null, owner)).Contains("disabled"), "Disabled starting shop rejects access");
+        PvPAdventure.Common.SSC.StartingItems.ApplyStartItems(guest);
+        PvPAdventure.Common.SSC.StartingItems.ApplyStartItems(guest);
+        Check(guest.inventory.Count(item => item.type == ModContent.ItemType<PortalCreatorItem>()) == 1,
+            "Starting items grant one portal creator even when starting shop is disabled");
+        ModContent.GetInstance<IndependentConfig>().StartingShopEnabled = true;
+        Type spectator = typeof(IndependentConfig).Assembly.GetType("PvPAdventure.Common.Spectator.SpectatorSystem");
+        Type handler = typeof(IndependentConfig).Assembly.GetType("PvPAdventure.Common.Spectator.SpectatorNetHandler");
+        void Mode(int sender)
+        {
+            using MemoryStream stream = new();
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)2);
+            writer.Write(guest.whoAmI);
+            writer.Write((byte)1);
+            stream.Position = 0;
+            handler.GetMethod("Receive").Invoke(null, new object[] { new BinaryReader(stream), sender });
+        }
+        Mode(guest.whoAmI);
+        Check((byte)spectator.GetMethod("GetMode").Invoke(null, new object[] { guest.whoAmI }) == 0,
+            "Guest cannot switch themselves into spectator mode");
+        guest.ghost = true;
+        guest.GetModPlayer<PvPAdventure.Common.Security.AdminPermissions.AdminPlayer>().PreUpdate();
+        Check(!guest.ghost, "Normal guest cannot keep ghost movement enabled");
+        Call(permissions, "Grant", null, owner.whoAmI, true);
+        Check(PvPAdventure.Common.Security.AdminPermissions.HasAccess(owner.whoAmI), "Server grants administrator permission");
+        Mode(owner.whoAmI);
+        Check((byte)spectator.GetMethod("GetMode").Invoke(null, new object[] { guest.whoAmI }) == 1,
+            "Administrator may assign spectator mode");
+        Terraria.Localization.NetworkText adminMessage = null;
+        Check(ModContent.GetInstance<IndependentConfig>().AcceptClientChanges(ModContent.GetInstance<IndependentConfig>(), owner.whoAmI, ref adminMessage),
+            "Administrator may change server configuration");
+        owner.GetModPlayer<PvPAdventure.Common.Security.AdminPermissions.AdminPlayer>().PlayerDisconnect();
+        Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(owner.whoAmI), "Disconnect revokes session administrator permission");
+        void Login(int sender, string credential)
+        {
+            using MemoryStream stream = new();
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)1);
+            writer.Write(credential);
+            stream.Position = 0;
+            Call(permissions, "Handle", null, new BinaryReader(stream), sender);
+        }
+        Login(owner.whoAmI, "wrong");
+        Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(owner.whoAmI), "Invalid login packet cannot grant administrator access");
+        Login(guest.whoAmI, password);
+        Check(PvPAdventure.Common.Security.AdminPermissions.HasAccess(guest.whoAmI), "Valid login packet grants administrator access");
+        Call(permissions, "Grant", null, guest.whoAmI, false);
     }
 
     private void CheckGrappleJump(Player player)

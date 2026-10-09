@@ -26,4 +26,5 @@ public enum AdventurePacketIdentifier : byte
     SessionTracker, // sync session time for all players
     KitShop,
     Portal,
+    AdminPermissions,
 }

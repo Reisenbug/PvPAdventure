@@ -30,6 +30,13 @@ public static class StartingItems
 
             Log.Chat("Start item " + itemDef.DisplayName + " added");
         }
+        int portalType = ModContent.ItemType<Common.Independent.PortalCreatorItem>();
+        if (Array.FindIndex(player.inventory, 0, 50, item => item.type == portalType) < 0)
+        {
+            int portalSlot = Array.FindIndex(player.inventory, 0, 50, item => item.IsAir);
+            if (portalSlot >= 0)
+                player.inventory[portalSlot] = new Item(portalType);
+        }
     }
     public static void ApplyStartLife(Player player)
     {

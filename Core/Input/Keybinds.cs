@@ -1,4 +1,3 @@
-using DragonLens.Core.Systems;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using PvPAdventure.Common.Arenas.UI;
@@ -51,6 +50,8 @@ internal class KeybindsPlayer : ModPlayer
 
         if (keybinds.StartGame.JustPressed)
         {
+            if (!Common.Security.AdminPermissions.RequireLocal())
+                return;
             var dialog = ModContent.GetInstance<StartGameSystem>();
             if (dialog.IsActive())
                 dialog.Hide();
@@ -96,19 +97,6 @@ internal class KeybindsPlayer : ModPlayer
         var spectatorConfig = ModContent.GetInstance<SpectatorConfig>();
         if (spectatorConfig.IsSpectateEnabled && keybinds.SpectateMenu.JustPressed)
         {
-            if (Main.netMode == NetmodeID.MultiplayerClient && spectatorConfig.ForcePlayersToSpectateWhenJoining)
-            {
-                if (ModLoader.HasMod("DragonLens") && IsDragonLensAdmin(Main.LocalPlayer))
-                {
-                    Main.NewText("Opening spectate options for admin.", Color.Yellow);
-                }
-                else
-                {
-                    Main.NewText("Spectator mode is enabled. Only admins can change your spectate status.", Color.OrangeRed);
-                }
-
-                return;
-            }
             SpectatorUISystem.ToggleSpectateJoinUI();
         }
 
@@ -120,6 +108,4 @@ internal class KeybindsPlayer : ModPlayer
         }
     }
 
-    [JITWhenModsEnabled("DragonLens")]
-    private static bool IsDragonLensAdmin(Player player) => PermissionHandler.LooksLikeAdmin(player);
 }

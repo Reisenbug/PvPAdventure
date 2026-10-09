@@ -565,8 +565,7 @@ public class ServerConfig : ModConfig
     #region Hooks / methods
     public override bool AcceptClientChanges(ModConfig pendingConfig, int whoAmI, ref NetworkText message)
     {
-        message = NetworkText.FromLiteral("Saved!");
-        return true;
+        return Common.Security.AdminPermissions.AcceptConfig(whoAmI, ref message);
     }
 
     public override void HandleAcceptClientChangesReply(bool success, int player, NetworkText message)

@@ -147,7 +147,7 @@ internal static class SpectatorNetHandler
         if (slot < 0 || slot >= Main.maxPlayers)
             return;
 
-        if (slot != sender && !HasDragonLensAdminPermission(sender))
+        if (!Common.Security.AdminPermissions.HasAccess(sender) || mode is not (PlayerMode.Player or PlayerMode.Spectator))
             return;
 
         SpectatorSystem.SetModeServer(slot, mode);
@@ -167,18 +167,4 @@ internal static class SpectatorNetHandler
             local.GetModPlayer<SpectatorPlayer>().HandleInitialModeMessage(mode);
     }
 
-    private static bool HasDragonLensAdminPermission(int sender)
-    {
-        if (sender < 0 || sender >= Main.maxPlayers || !ModLoader.HasMod("DragonLens"))
-            return false;
-
-        return HasDragonLensAdminPermission_DragonLens(sender);
-    }
-
-    [JITWhenModsEnabled("DragonLens")]
-    private static bool HasDragonLensAdminPermission_DragonLens(int sender)
-    {
-        Player player = Main.player[sender];
-        return player?.active == true && DragonLens.Core.Systems.PermissionHandler.CanUseTools(player);
-    }
 }

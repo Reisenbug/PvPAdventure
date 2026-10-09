@@ -56,6 +56,8 @@ public class ExtendGamePanel : UIDraggablePanel
 
         applyButton.OnLeftClick += (_, _) =>
         {
+            if (!Common.Security.AdminPermissions.RequireLocal())
+                return;
             if (timeAdjustInFrames == 0)
             {
                 ModContent.GetInstance<StartGameSystem>().Hide();

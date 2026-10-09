@@ -1,5 +1,4 @@
-﻿using DragonLens.Core.Systems;
-using PvPAdventure.Common.Arenas;
+﻿using PvPAdventure.Common.Arenas;
 using PvPAdventure.Core.Config.ConfigElements.LoadoutItems;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -46,34 +45,7 @@ internal class ArenasConfig : ModConfig
     #region Hooks / methods
     public override bool AcceptClientChanges(ModConfig pendingConfig, int whoAmI, ref NetworkText message)
     {
-        // Singleplayer always allowed
-        if (Main.netMode == NetmodeID.SinglePlayer)
-            return true;
-
-        // If dragonlens isn't loaded, disallow modifying the config.
-        if (!ModLoader.HasMod("DragonLens"))
-        {
-            message = NetworkText.FromLiteral("Server config changes require DragonLens admin (DragonLens not loaded).");
-            return false;
-        }
-
-        // DragonLens admin check
-        return AcceptClientChanges_DragonLens(whoAmI, ref message);
-    }
-
-    [JITWhenModsEnabled("DragonLens")]
-    private static bool AcceptClientChanges_DragonLens(int whoAmI, ref NetworkText message)
-    {
-        Player player = Main.player[whoAmI];
-
-        if (!PermissionHandler.CanUseTools(player))
-        {
-            message = NetworkText.FromLiteral("You must be a DragonLens admin to modify this config.");
-            return false;
-        }
-        message = NetworkText.FromLiteral("Saved!");
-
-        return true;
+        return Common.Security.AdminPermissions.AcceptConfig(whoAmI, ref message);
     }
 
     public override void HandleAcceptClientChangesReply(bool success, int player, NetworkText message)
@@ -91,4 +63,3 @@ internal class ArenasConfig : ModConfig
     }
     #endregion
 }
-

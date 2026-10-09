@@ -18,6 +18,8 @@ internal static class ArenasAdminNetHandler
 
     public static void Request(ArenasAdminPacketType type)
     {
+        if (!Common.Security.AdminPermissions.RequireLocal())
+            return;
         if (Main.netMode == NetmodeID.SinglePlayer)
         {
             Execute(type);
@@ -41,7 +43,8 @@ internal static class ArenasAdminNetHandler
 
         if (Main.netMode == NetmodeID.Server)
         {
-            // TODO: add your admin permission check here (steamId list, operator flag, etc.)
+            if (!Common.Security.AdminPermissions.HasAccess(fromWho))
+                return;
             Log.Debug("Server received: " + type + " from " + fromWho);
 
             var packet = ModContent.GetInstance<PvPAdventure>().GetPacket();

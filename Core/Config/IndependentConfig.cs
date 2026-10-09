@@ -22,6 +22,12 @@ public sealed class IndependentConfig : ModConfig
     [Range(0, 1000)]
     public int StartingGold = 10;
 
+    [DefaultValue(true)]
+    public bool StartingShopEnabled = true;
+
+    public override bool AcceptClientChanges(ModConfig pendingConfig, int whoAmI, ref Terraria.Localization.NetworkText message) =>
+        Common.Security.AdminPermissions.AcceptConfig(whoAmI, ref message);
+
     public List<KitItem> StartingShop = [
 
     new(ItemID.Wood, 1, Item.buyPrice(silver: 2)),

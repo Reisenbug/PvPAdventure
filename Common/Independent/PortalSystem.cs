@@ -70,7 +70,7 @@ public sealed class PortalSystem : ModSystem
         if (player.GetModPlayer<SpawnPlayer>().IsPlayerInSpawnRegion())
             return "Leave the spawn area before creating a team portal.";
         if (!player.inventory.Take(50).Any(item => item.type == ModContent.ItemType<PortalCreatorItem>()))
-            return "No Portal Creator in your inventory. Before the match, use Reset kit in Starting Kit Shop (K).";
+            return "No Portal Creator in your inventory. It is included with the server's starting items.";
         if (player.velocity.LengthSquared() >= 0.1f)
             return "Stand still and hold the team portal key to create a portal.";
         return null;
