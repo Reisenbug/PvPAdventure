@@ -20,6 +20,8 @@ public sealed class RuntimeChecks : ModSystem
 {
     private delegate int TextOriginal(Rectangle location, Color color, int amount, bool dramatic, bool dot);
     private delegate int TextHook(TextOriginal original, Rectangle location, Color color, int amount, bool dramatic, bool dot);
+    private delegate void PacketOriginal(ModPacket packet, int toClient, int ignoreClient);
+    private delegate void PacketHook(PacketOriginal original, ModPacket packet, int toClient, int ignoreClient);
     private bool ran;
     private int assertions;
     private static object Call(Type type, string method, object instance, params object[] arguments) =>
@@ -117,12 +119,36 @@ public sealed class RuntimeChecks : ModSystem
             game.CurrentPhase = GameManager.Phase.Waiting;
             void Shop(Player player, byte action, int type = 0, System.Collections.Generic.Dictionary<int, int> preset = null) =>
                 Call(typeof(KitShopSystem), "Execute", null, player, action, type, preset);
+            Shop(a, 3);
+            var freshKit = a.GetModPlayer<KitShopPlayer>();
+            Mod.Logger.Info($"Measured fresh shop: balance={typeof(KitShopPlayer).GetField("Balance", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(freshKit)}, initialized={typeof(KitShopPlayer).GetField("Initialized", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(freshKit)}");
+            Check(((string)Call(typeof(KitShopSystem), "BudgetText", null)).Contains("Reset kit to activate"),
+                "Fresh shop explains inactive budget instead of showing zero gold");
             Shop(a, 1);
+            Check((int)typeof(KitShopPlayer).GetField("Balance", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(freshKit) == 100000 &&
+                (bool)typeof(KitShopPlayer).GetField("Initialized", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(freshKit),
+                "Reset activates configured ten-gold budget on authority");
             Check(a.inventory.Any(item => item.type == ModContent.ItemType<PortalCreatorItem>()), "Reset kit grants portal creator");
             Shop(a, 0, ItemID.BlandWhip);
             Shop(a, 0, ItemID.BlandWhip);
             Shop(a, 0, ItemID.BlandWhip);
             Check(a.inventory.Count(item => item.type == ItemID.BlandWhip) == 2, "Server rejects purchase beyond budget");
+            Check(((string)Call(typeof(KitShopSystem), "BudgetText", null)) == "Starting kit budget: 0 gold",
+                "Spent budget remains a genuine initialized zero balance");
+            Main.netMode = NetmodeID.MultiplayerClient;
+            using (MemoryStream budgetStream = new())
+            {
+                using BinaryWriter budgetWriter = new(budgetStream, System.Text.Encoding.UTF8, true);
+                budgetWriter.Write((byte)4);
+                budgetWriter.Write(true);
+                budgetWriter.Write(4321);
+                budgetWriter.Write(0);
+                budgetStream.Position = 0;
+                Call(typeof(KitShopSystem), "Handle", null, new BinaryReader(budgetStream), 0);
+            }
+            Check(((string)Call(typeof(KitShopSystem), "BudgetText", null)).Contains("0.4321 gold"),
+                "Client receives initialized flag and authoritative budget amount");
+            Main.netMode = NetmodeID.SinglePlayer;
             Shop(a, 2, preset: new() { [ItemID.BlandWhip] = -1 });
             Check(a.inventory.Count(item => item.type == ItemID.BlandWhip) == 2, "Invalid preset leaves inventory unchanged");
             Shop(a, 2, preset: new() { [ItemID.BabyBirdStaff] = 1 });
@@ -137,7 +163,11 @@ public sealed class RuntimeChecks : ModSystem
                 using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
                 writer.Write((byte)1);
                 stream.Position = 0;
+                bool rejectionSent = false;
+                using var replyTransport = new MonoMod.RuntimeDetour.Hook(typeof(ModPacket).GetMethod(nameof(ModPacket.Send)),
+                    (PacketHook)((original, packet, toClient, ignoreClient) => rejectionSent = toClient == a.whoAmI));
                 Call(typeof(KitShopSystem), "Handle", null, new BinaryReader(stream), a.whoAmI);
+                Check(rejectionSent, "Server sends shop rejection feedback to requesting player");
             }
             Check(a.inventory.Any(item => item.type == ItemID.BabyBirdStaff), "Server packet cannot reset a kit during a match");
             Main.netMode = NetmodeID.SinglePlayer;

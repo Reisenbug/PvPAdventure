@@ -25,11 +25,25 @@ public sealed class KitShopSystem : ModSystem
     private UserInterface ui;
     private KitMenu menu;
     internal static int Balance;
+    internal static bool Initialized;
+    private static bool awaitingBudget;
     internal static Dictionary<int, int> Purchases = [];
     private static Dictionary<int, int>[] presets = new Dictionary<int, int>[3];
     private static string PresetPath => Path.Combine(Main.SavePath, "PvPAdventure", "StartingLoadouts.json");
     internal static IndependentConfig Config => ModContent.GetInstance<IndependentConfig>();
     internal static bool CanShop(Player player) => BlockReason(player) == null;
+
+    internal static string BudgetText() => awaitingBudget ? "Loading starting kit budget..." :
+        Initialized ? $"Starting kit budget: {Balance / 10000f:0.####} gold" :
+        $"Starting kit: {Config.StartingGold} gold (Reset kit to activate)";
+
+    public override void OnWorldLoad()
+    {
+        Balance = 0;
+        Initialized = awaitingBudget = false;
+        Purchases = [];
+        ui?.SetState(null);
+    }
 
     internal static string BlockReason(Player player)
     {
@@ -90,6 +104,7 @@ public sealed class KitShopSystem : ModSystem
             ui.SetState(null);
         else
         {
+            awaitingBudget = true;
             menu = new();
             ui.SetState(menu);
             Request(3);
@@ -104,6 +119,11 @@ public sealed class KitShopSystem : ModSystem
             return;
         if (action == 2 && preset == null)
             return;
+        if (action == 0 && !Initialized)
+        {
+            Main.NewText("Reset kit first to activate your budget. This clears your current gear.", Color.OrangeRed);
+            return;
+        }
         if (action is 1 or 2 && !Main.mouseItem.IsAir)
         {
             Main.NewText("Put the item on your cursor away before resetting or loading a kit.");
@@ -129,10 +149,20 @@ public sealed class KitShopSystem : ModSystem
         byte action = reader.ReadByte();
         if (Main.netMode == NetmodeID.MultiplayerClient)
         {
+            if (action == 5)
+            {
+                awaitingBudget = false;
+                Main.NewText(reader.ReadString(), Color.OrangeRed);
+                ModContent.GetInstance<KitShopSystem>().ui?.SetState(null);
+                return;
+            }
             if (action != 4)
                 return;
+            Initialized = reader.ReadBoolean();
             Balance = reader.ReadInt32();
             Purchases = ReadItems(reader);
+            awaitingBudget = false;
+            Log.Info($"Starting kit sync: initialized={Initialized}, balance={Balance}");
             ModContent.GetInstance<KitShopSystem>().menu?.Refresh();
             return;
         }
@@ -145,8 +175,19 @@ public sealed class KitShopSystem : ModSystem
 
     private static void Execute(Player player, byte action, int item, Dictionary<int, int> preset)
     {
-        if (!CanShop(player))
+        string reason = BlockReason(player);
+        if (reason != null)
+        {
+            if (Main.netMode == NetmodeID.Server)
+            {
+                ModPacket rejection = ModContent.GetInstance<PvPAdventure>().GetPacket();
+                rejection.Write((byte)AdventurePacketIdentifier.KitShop);
+                rejection.Write((byte)5);
+                rejection.Write(reason);
+                rejection.Send(player.whoAmI);
+            }
             return;
+        }
         KitShopPlayer kit = player.GetModPlayer<KitShopPlayer>();
         if (action == 1)
             Reset(player, kit);
@@ -162,15 +203,19 @@ public sealed class KitShopSystem : ModSystem
         }
         if (Main.netMode == NetmodeID.SinglePlayer)
         {
+            Initialized = kit.Initialized;
             Balance = kit.Balance;
             Purchases = new(kit.Purchases);
+            awaitingBudget = false;
             ModContent.GetInstance<KitShopSystem>().menu?.Refresh();
         }
         else
         {
+            Log.Info($"Starting kit: player={player.whoAmI}, action={action}, initialized={kit.Initialized}, balance={kit.Balance}, startingGold={Config.StartingGold}");
             ModPacket packet = ModContent.GetInstance<PvPAdventure>().GetPacket();
             packet.Write((byte)AdventurePacketIdentifier.KitShop);
             packet.Write((byte)4);
+            packet.Write(kit.Initialized);
             packet.Write(kit.Balance);
             WriteItems(packet, kit.Purchases);
             packet.Send(player.whoAmI);
@@ -327,7 +372,7 @@ public sealed class KitShopSystem : ModSystem
             }
         }
 
-        internal void Refresh() => title?.SetText($"Starting kit budget: {Balance / 10000f:0.####} gold");
+        internal void Refresh() => title?.SetText(BudgetText());
         public override void Update(GameTime gameTime)
         {
             base.Update(gameTime);
