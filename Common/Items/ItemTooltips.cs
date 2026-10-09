@@ -67,12 +67,16 @@ public class ItemTooltips : GlobalItem
         }
 
         // Possible EJ changes below
+        if (item.type is ItemID.CrossNecklace or ItemID.StarVeil)
+            tooltips.Add(new TooltipLine(Mod, "ProtectionEnergy",
+                Language.GetTextValue("Mods.PvPAdventure.ArmorEnergy.ProtectionDescription")));
+
         if (item.type == ItemID.BeetleScaleMail)
         {
             TooltipLine setBonusLine = tooltips.FirstOrDefault(x => x.Name == "SetBonus" && x.Mod == "Terraria");
             if (setBonusLine != null)
             {
-                setBonusLine.Text = "Set bonus:\nGain Beetles from player kills\nBeetles increase your melee damage and attack speed";
+                setBonusLine.Text = Language.GetTextValue("Mods.PvPAdventure.ArmorEnergy.BeetleSetBonus");
             }
         }
 

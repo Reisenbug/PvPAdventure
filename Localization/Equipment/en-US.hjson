@@ -1,0 +1,15 @@
+Mods: {
+	PvPAdventure: {
+		ArmorEnergy: {
+			BeetleSetBonus: Set bonus: Melee PvP damage builds energy (9 per damage, cap 3600). Energy decays by 60 per second. Beetle Might tiers grant 10% melee damage and speed each.
+			ProtectionDescription: PvP damage charges protection. Taking damage equal to half your maximum life activates 50% damage reduction. Energy decays by 30 damage-equivalent points per second.
+		}
+
+		Buffs: {
+			GodsProtection: {
+				DisplayName: God's Protection
+				Description: 50% less damage while your protection energy is at least your maximum life
+			}
+		}
+	}
+}

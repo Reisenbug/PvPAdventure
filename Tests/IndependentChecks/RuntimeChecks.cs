@@ -233,6 +233,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckDragonLensPermissions(a, c);
             CheckCombatBalance(a, c);
             CheckNamedAdministrator(c);
+            CheckArmorEnergy(a, c);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -334,6 +335,155 @@ public sealed class RuntimeChecks : ModSystem
         permissions.PreUpdate();
         Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(player.whoAmI),
             "Reused player slot does not inherit named administrator permission");
+        Main.netMode = NetmodeID.SinglePlayer;
+    }
+
+    private void CheckArmorEnergy(Player attacker, Player target)
+    {
+        bool wasMenu = Main.gameMenu;
+        Main.gameMenu = false;
+        Main.netMode = NetmodeID.Server;
+        int sent = 0;
+        using var transport = new MonoMod.RuntimeDetour.Hook(typeof(ModPacket).GetMethod(nameof(ModPacket.Send)),
+            (PacketHook)((original, packet, toClient, ignoreClient) => sent++));
+        foreach (Player player in new[] { attacker, target })
+        {
+            player.active = true;
+            player.dead = player.ghost = false;
+            for (int i = 0; i < player.armor.Length; i++)
+                player.armor[i] = new Item();
+            player.statLife = 1000;
+            player.statLifeMax2 = 400;
+            player.GetModPlayer<PvPAdventure.Common.Combat.ArmorEnergyPlayer>().PlayerDisconnect();
+        }
+        attacker.team = 1;
+        target.team = 2;
+        attacker.armor[0] = new Item(ItemID.BeetleHelmet);
+        attacker.armor[1] = new Item(ItemID.BeetleScaleMail);
+        attacker.armor[2] = new Item(ItemID.BeetleLeggings);
+        target.armor[3] = new Item(ItemID.CrossNecklace);
+        var offense = attacker.GetModPlayer<PvPAdventure.Common.Combat.ArmorEnergyPlayer>();
+        Check(!BuffID.Sets.TimeLeftDoesNotDecrease[BuffID.BeetleMight1] &&
+            !BuffID.Sets.TimeLeftDoesNotDecrease[BuffID.BeetleMight2] &&
+            !BuffID.Sets.TimeLeftDoesNotDecrease[BuffID.BeetleMight3],
+            "Beetle buffs no longer retain old permanent duration flags");
+        Check(Terraria.Localization.Language.GetTextValue("Mods.PvPAdventure.ArmorEnergy.BeetleSetBonus").Contains("9 per damage") &&
+            Terraria.Localization.Language.GetTextValue("Mods.PvPAdventure.Buffs.GodsProtection.Description").Contains("50%"),
+            "Equipment localization keys resolve to rule descriptions");
+        var protection = target.GetModPlayer<PvPAdventure.Common.Combat.ArmorEnergyPlayer>();
+        var reason = Terraria.DataStructures.PlayerDeathReason.ByPlayerItem(attacker.whoAmI, new Item(ItemID.PaladinsHammer));
+        Player.HurtInfo hit = new()
+        {
+            DamageSource = reason, Damage = 100, SourceDamage = 100, PvP = true,
+            DustDisabled = true, SoundDisabled = true
+        };
+        target.Hurt(hit, true);
+        Mod.Logger.Info($"ARMOR_ENERGY_MEASURE beetle={offense.BeetleEnergy}, cross={protection.CrossEnergy}");
+        Check(offense.BeetleEnergy == 900 && protection.CrossEnergy == 200,
+            "Actual server hurt awards 9x melee damage and 2x received PvP damage once");
+        Check(offense.BeetleTier == 1 && !protection.Protected, "First armor energy thresholds match");
+        int authoritativePackets = sent;
+        Main.netMode = NetmodeID.MultiplayerClient;
+        protection.OnHurt(hit);
+        Check(offense.BeetleEnergy == 900 && protection.CrossEnergy == 200 && sent == authoritativePackets,
+            "Client hurt cannot duplicate armor energy or send grants");
+        void Snapshot(Player player, int cross, int beetle)
+        {
+            using MemoryStream stream = new();
+            using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
+            writer.Write((byte)player.whoAmI);
+            writer.Write(cross);
+            writer.Write(beetle);
+            stream.Position = 0;
+            Call(typeof(PvPAdventure.Common.Combat.ArmorEnergyPlayer), "Handle", null, new BinaryReader(stream));
+            Check(stream.Position == stream.Length, "Armor energy packet is fully consumed");
+        }
+        Main.netMode = NetmodeID.Server;
+        Snapshot(attacker, 12345, 3600);
+        Check(offense.BeetleEnergy == 900 && offense.CrossEnergy == 0, "Server rejects client-forged armor energy");
+        foreach (var value in new[] { (599, 0), (600, 1), (1439, 1), (1440, 2), (3000, 2), (3001, 3), (3600, 3) })
+        {
+            Main.netMode = NetmodeID.MultiplayerClient;
+            Snapshot(attacker, 0, value.Item1);
+            Check(offense.BeetleTier == value.Item2, "Beetle tier at energy " + value.Item1);
+        }
+        Main.netMode = NetmodeID.Server;
+        protection.OnHurt(hit);
+        Check(offense.BeetleEnergy == 3600 && protection.CrossEnergy == 400 && protection.Protected,
+            "Beetle energy caps at 3600 and protection activates at maximum life");
+        Player.HurtModifiers modifiers = new() { DamageSource = reason, PvP = true };
+        protection.ModifyHurt(ref modifiers);
+        Check(modifiers.FinalDamage.ApplyTo(100) == 50, "Active protection halves final damage");
+        protection.PostUpdate();
+        Check(protection.CrossEnergy == 399 && !protection.Protected, "Protection decays by one and ends below threshold");
+        offense.PostUpdate();
+        Check(offense.BeetleEnergy == 3599 && attacker.HasBuff(BuffID.BeetleMight3) &&
+            !attacker.HasBuff(BuffID.BeetleMight1) && !attacker.HasBuff(BuffID.BeetleMight2),
+            "Beetle decay refreshes exactly one tier buff");
+        attacker.ResetEffects();
+        attacker.UpdateBuffs(attacker.whoAmI);
+        Mod.Logger.Info($"ARMOR_SLOT_MEASURE beetle head={attacker.head}, body={attacker.body}, legs={attacker.legs}; equipped={attacker.armor[0].headSlot}/{attacker.armor[1].bodySlot}/{attacker.armor[2].legSlot}");
+        attacker.head = attacker.armor[0].headSlot;
+        attacker.body = attacker.armor[1].bodySlot;
+        attacker.legs = attacker.armor[2].legSlot;
+        attacker.beetleCounter = 5000;
+        attacker.UpdateArmorSets(attacker.whoAmI);
+        Check(attacker.beetleOffense && attacker.beetleCounter == 5000,
+            "Actual beetle armor set hook bypasses vanilla charge decay");
+        Mod.Logger.Info($"BEETLE_STATS_MEASURE damage={attacker.GetDamage(DamageClass.Melee).Additive}, speed={attacker.GetAttackSpeed(DamageClass.Melee)}");
+        Check(Math.Abs(attacker.GetDamage(DamageClass.Melee).Additive - 1.3f) < 0.00001f &&
+            Math.Abs(attacker.GetAttackSpeed(DamageClass.Melee) - 1.3f) < 0.00001f,
+            "Tier three gives 30 percent melee damage and attack speed without vanilla double application");
+        attacker.armor[1] = new Item();
+        offense.PostUpdate();
+        Check(offense.BeetleEnergy == 0 && !attacker.HasBuff(BuffID.BeetleMight3),
+            "Removing beetle scale mail clears energy and buffs");
+        target.armor[3] = new Item();
+        protection.PostUpdate();
+        Check(protection.CrossEnergy == 0, "Removing protection equipment clears stored energy");
+        target.armor[0] = new Item(ItemID.HallowedHood);
+        target.armor[1] = new Item(ItemID.HallowedPlateMail);
+        target.armor[2] = new Item(ItemID.HallowedGreaves);
+        Mod.Logger.Info($"ARMOR_SLOT_MEASURE hallowed head={target.head}, body={target.body}, legs={target.legs}; equipped={target.armor[0].headSlot}/{target.armor[1].bodySlot}/{target.armor[2].legSlot}");
+        target.head = target.armor[0].headSlot;
+        target.body = target.armor[1].bodySlot;
+        target.legs = target.armor[2].legSlot;
+        target.UpdateArmorSets(target.whoAmI);
+        Check(target.onHitDodge, "Vanilla hallowed armor enables dodge before mod replacement");
+        target.shadowDodge = true;
+        protection.PostUpdateEquips();
+        Check(protection.HasCrossEquipment && !target.onHitDodge && !target.shadowDodge,
+            "Full hallowed summoner set uses energy protection instead of vanilla dodge");
+        Main.netMode = NetmodeID.MultiplayerClient;
+        Snapshot(target, 500, 3600);
+        Main.netMode = NetmodeID.Server;
+        protection.Kill(100, 0, true, reason);
+        Check(protection.CrossEnergy == 0 && protection.BeetleEnergy == 0 && !protection.Protected,
+            "Death clears both armor energy pools");
+        int beforeNonPvp = protection.CrossEnergy;
+        hit.PvP = false;
+        protection.OnHurt(hit);
+        Check(protection.CrossEnergy == beforeNonPvp, "PvE damage does not charge protection");
+        target.armor[0] = target.armor[1] = target.armor[2] = new Item();
+        target.armor[3] = new Item(ItemID.FeralClaws);
+        target.armor[4] = new Item(ItemID.PowerGlove);
+        target.armor[5] = new Item(ItemID.FireGauntlet);
+        target.GetAttackSpeed(DamageClass.Melee) = 1.36f;
+        target.GetModPlayer<PvPAdventure.Common.Combat.EJ.GlovesDontStack>().PostUpdateEquips();
+        Check(Math.Abs(target.GetAttackSpeed(DamageClass.Melee) - 1.12f) < 0.00001f,
+            "Three equipped gloves retain only one 12 percent speed bonus");
+        target.armor[4] = target.armor[5] = new Item();
+        target.GetAttackSpeed(DamageClass.Melee) = 1.12f;
+        target.GetModPlayer<PvPAdventure.Common.Combat.EJ.GlovesDontStack>().PostUpdateEquips();
+        Check(Math.Abs(target.GetAttackSpeed(DamageClass.Melee) - 1.12f) < 0.00001f,
+            "One glove keeps its speed bonus");
+        target.extraAccessory = false;
+        target.armor[8] = new Item(ItemID.PowerGlove);
+        target.armor[9] = new Item(ItemID.FireGauntlet);
+        target.GetModPlayer<PvPAdventure.Common.Combat.EJ.GlovesDontStack>().PostUpdateEquips();
+        Check(Math.Abs(target.GetAttackSpeed(DamageClass.Melee) - 1.12f) < 0.00001f,
+            "Locked accessory slots do not count as equipped gloves");
+        Main.gameMenu = wasMenu;
         Main.netMode = NetmodeID.SinglePlayer;
     }
 

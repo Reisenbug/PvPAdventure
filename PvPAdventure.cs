@@ -117,6 +117,10 @@ public class PvPAdventure : Mod
                 Common.Security.AdminPermissions.Handle(r, whoAmI);
                 break;
 
+            case AdventurePacketIdentifier.ArmorEnergy:
+                Common.Combat.ArmorEnergyPlayer.Handle(r);
+                break;
+
             default:
                 Log.Warn($"Unknown packet id: {id}");
                 break;

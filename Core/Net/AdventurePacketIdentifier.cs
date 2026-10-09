@@ -27,4 +27,5 @@ public enum AdventurePacketIdentifier : byte
     KitShop,
     Portal,
     AdminPermissions,
+    ArmorEnergy,
 }

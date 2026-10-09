@@ -1,6 +1,5 @@
 ﻿using MonoMod.Cil;
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.ID;
 using Terraria.Localization;
 using Terraria.ModLoader;
@@ -19,70 +18,9 @@ internal class PvPBeetleArmorPlayer : ModPlayer
 
     public override void SetStaticDefaults()
     {
-        // Beetle Might buffs last forever until death.
-        BuffID.Sets.TimeLeftDoesNotDecrease[BuffID.BeetleMight1] = true;
-        BuffID.Sets.TimeLeftDoesNotDecrease[BuffID.BeetleMight2] = true;
-        BuffID.Sets.TimeLeftDoesNotDecrease[BuffID.BeetleMight3] = true;
-    }
-
-    public override void PostUpdateEquips()
-    {
-        //if (Player.beetleOffense)
-        //{
-        //    Player.GetDamage<MeleeDamageClass>() += 0;
-        //    Player.GetAttackSpeed<MeleeDamageClass>() += 0;
-        //}
-        //else
-        //{
-        //    Player.ClearBuff(BuffID.BeetleMight1);
-        //    Player.ClearBuff(BuffID.BeetleMight2);
-        //    Player.ClearBuff(BuffID.BeetleMight3);
-        //}
-
-        if (Player.HasBuff(BuffID.BeetleMight3))
-        {
-            // we apply the glowing eye effect from Yoraiz0rsSpell item
-            Player.yoraiz0rEye = 33;
-        }
-    }
-
-    public override void Kill(double damage, int hitDirection, bool pvp, PlayerDeathReason damageSource)
-    {
-        //if (Main.netMode == NetmodeID.MultiplayerClient)
-            //return;
-
-        int attackerIdx = damageSource.SourcePlayerIndex;
-        if ((uint)attackerIdx >= (uint)Main.maxPlayers)
-            return;
-
-        if (attackerIdx == Player.whoAmI)
-            return;
-
-        Player attacker = Main.player[attackerIdx];
-        if (!attacker.active)
-            return;
-
-        if (!attacker.beetleOffense)
-            return;
-
-        int tier = 0;
-
-        if (attacker.HasBuff(BuffID.BeetleMight3))
-            tier = 3;
-        else if (attacker.HasBuff(BuffID.BeetleMight2))
-            tier = 2;
-        else if (attacker.HasBuff(BuffID.BeetleMight1))
-            tier = 1;
-
-        if (tier >= 3)
-            return;
-
-        attacker.ClearBuff(BuffID.BeetleMight1);
-        attacker.ClearBuff(BuffID.BeetleMight2);
-        attacker.ClearBuff(BuffID.BeetleMight3);
-
-        int buffType = BuffID.BeetleMight1 + tier;
-        attacker.AddBuff(buffType, 2);
+        BuffID.Sets.TimeLeftDoesNotDecrease[BuffID.BeetleMight1] = false;
+        BuffID.Sets.TimeLeftDoesNotDecrease[BuffID.BeetleMight2] = false;
+        BuffID.Sets.TimeLeftDoesNotDecrease[BuffID.BeetleMight3] = false;
     }
 
     private void EditPlayerUpdateBuffs(ILContext il)
@@ -121,11 +59,10 @@ internal class PvPBeetleArmorPlayer : ModPlayer
         cursor.EmitLdarg0();
         cursor.EmitDelegate((Player self) =>
         {
-            self.setBonus = Language.GetTextValue("ArmorSetBonus.BeetleDamage");
+            self.setBonus = Language.GetTextValue("Mods.PvPAdventure.ArmorEnergy.BeetleSetBonus");
             self.beetleOffense = true;
         });
         // ...then branch away so we skip the original code.
         cursor.EmitBr(label);
     }
 }
-

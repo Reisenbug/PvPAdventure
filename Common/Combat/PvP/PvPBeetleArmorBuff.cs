@@ -1,5 +1,4 @@
-﻿using Microsoft.Xna.Framework;
-using Terraria;
+﻿using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
 
@@ -15,42 +14,20 @@ public class PvPBeetleArmorBuff : GlobalBuff
             // Calculate how many beetles we have based on the buff we have
             player.beetleOrbs = type - BuffID.BeetleMight1 + 1;
 
-            var damage = 0.0f;
-            var attackSpeed = 0.0f;
-
-            if (player.beetleOrbs >= 1)
+            if (player.GetModPlayer<ArmorEnergyPlayer>().BeetleTier != player.beetleOrbs)
             {
-                damage += 0.15f;
-                attackSpeed += 0.15f;
+                player.DelBuff(buffIndex--);
+                player.beetleOrbs = 0;
+                return;
             }
 
-            if (player.beetleOrbs >= 2)
-            {
-                damage += 0.10f;
-                attackSpeed += 0.10f;
-            }
-
-            if (player.beetleOrbs >= 3)
-            {
-                damage += 0.05f;
-                attackSpeed += 0.20f;
-            }
-
-            player.GetDamage<MeleeDamageClass>() += damage;
-            player.GetAttackSpeed<MeleeDamageClass>() += attackSpeed;
+            player.GetDamage<MeleeDamageClass>() += 0.1f * player.beetleOrbs;
+            player.GetAttackSpeed<MeleeDamageClass>() += 0.1f * player.beetleOrbs;
         }
     }
 
     public override bool RightClick(int type, int buffIndex)
     {
-        // Prevent dismissing buffs that are automated.
-        //if (type is BuffID.BeetleMight1 or BuffID.BeetleMight2 or BuffID.BeetleMight3)
-        //{
-        //    Main.NewText("Cannot cancel Beetle Might.", Color.Yellow);
-        //    return false;
-        //}
-
-        return true;
+        return type < BuffID.BeetleMight1 || type > BuffID.BeetleMight3;
     }
 }
-
