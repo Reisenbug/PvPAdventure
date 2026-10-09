@@ -230,6 +230,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckPortalInterruption(a);
             CheckBulkCraft(a);
             MeasureSlopes();
+            CheckDragonLensPermissions(a, c);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -292,6 +293,55 @@ public sealed class RuntimeChecks : ModSystem
         Check(Call(typeof(PortalSystem), "CreationBlockReason", null, player) == null,
             "Living stationary player with creator in wilderness may create portal");
         Call(typeof(PvPAdventure.Common.Security.AdminPermissions), "Grant", null, player.whoAmI, false);
+    }
+
+    private void CheckDragonLensPermissions(Player owner, Player guest)
+    {
+        if (!ModLoader.TryGetMod("DragonLens", out Mod dragonLens))
+            return;
+        using var transport = new MonoMod.RuntimeDetour.Hook(typeof(ModPacket).GetMethod(nameof(ModPacket.Send)),
+            (PacketHook)((original, packet, toClient, ignoreClient) => { }));
+        Type handler = dragonLens.Code.GetType("DragonLens.Core.Systems.PermissionHandler");
+        MethodInfo canUse = handler.GetMethod("CanUseTools", BindingFlags.Static | BindingFlags.Public);
+        Type permissions = typeof(PvPAdventure.Common.Security.AdminPermissions);
+        Main.netMode = NetmodeID.Server;
+        Check(!(bool)canUse.Invoke(null, new object[] { guest }), "DragonLens denies tool permission to guest");
+        void Packet(string type, Action<BinaryWriter> write, int sender)
+        {
+            using MemoryStream stream = new();
+            using (BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true))
+            {
+                writer.Write(type);
+                write(writer);
+            }
+            stream.Position = 0;
+            dragonLens.HandlePacket(new BinaryReader(stream), sender);
+            Check(stream.Position == stream.Length, "DragonLens packet fully consumed: " + type);
+        }
+        void TimePacket(int sender) => Packet("ToolPacket", writer =>
+        {
+            writer.Write("DragonLens/Time");
+            writer.Write(12345d);
+            writer.Write(true);
+            writer.Write(-1);
+            writer.Write(false);
+            writer.Write(0);
+        }, sender);
+        Main.time = 54321;
+        TimePacket(guest.whoAmI);
+        Check(Main.time == 54321, "Guest DragonLens tool packet cannot change world time");
+        Packet("AdminUpdate", writer => { writer.Write(0); writer.Write(guest.whoAmI); }, guest.whoAmI);
+        Check(!(bool)canUse.Invoke(null, new object[] { guest }), "Forged DragonLens admin packet cannot grant tool permission");
+        Call(permissions, "Grant", null, owner.whoAmI, true);
+        Check((bool)canUse.Invoke(null, new object[] { owner }), "Independent administrator may use DragonLens tools");
+        TimePacket(owner.whoAmI);
+        Check(Main.time == 12345, "Authenticated DragonLens tool packet changes world time");
+        Packet("AdminUpdate", writer => { writer.Write(1); writer.Write(owner.whoAmI); }, guest.whoAmI);
+        Check((bool)canUse.Invoke(null, new object[] { owner }), "Guest cannot revoke administrator through DragonLens packets");
+        owner.GetModPlayer<PvPAdventure.Common.Security.AdminPermissions.AdminPlayer>().PlayerDisconnect();
+        Check(!(bool)canUse.Invoke(null, new object[] { owner }), "Disconnect revokes DragonLens tool permission");
+        Main.netMode = NetmodeID.SinglePlayer;
+        Check((bool)canUse.Invoke(null, new object[] { guest }), "Single-player DragonLens tools remain available");
     }
 
     private void CheckPortalInterruption(Player player)
