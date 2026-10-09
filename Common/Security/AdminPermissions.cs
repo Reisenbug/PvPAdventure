@@ -127,6 +127,7 @@ public sealed class AdminPermissions : ModSystem
     public sealed class AdminCommand : ModCommand
     {
         public override string Command => "pvpadmin";
+        public override bool IsCaseSensitive => true;
         public override CommandType Type => CommandType.Console | CommandType.Chat;
         public override string Usage => "/pvpadmin <password>; console: pvpadmin <player slot> [revoke]";
         public override void Action(CommandCaller caller, string input, string[] args)

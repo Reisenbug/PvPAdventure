@@ -22,6 +22,16 @@ public sealed class RuntimeChecks : ModSystem
     private delegate int TextHook(TextOriginal original, Rectangle location, Color color, int amount, bool dramatic, bool dot);
     private delegate void PacketOriginal(ModPacket packet, int toClient, int ignoreClient);
     private delegate void PacketHook(PacketOriginal original, ModPacket packet, int toClient, int ignoreClient);
+    private delegate void CommandOriginal(PvPAdventure.Common.Security.AdminPermissions.AdminCommand command, CommandCaller caller, string input, string[] args);
+    private delegate void CommandHook(CommandOriginal original, PvPAdventure.Common.Security.AdminPermissions.AdminCommand command, CommandCaller caller, string input, string[] args);
+    private delegate int PopupOriginal(PopupTextContext context, Item item, int stack, bool noStack, bool longText);
+    private delegate int PopupHook(PopupOriginal original, PopupTextContext context, Item item, int stack, bool noStack, bool longText);
+    private sealed class TestChatCaller : CommandCaller
+    {
+        public CommandType CommandType => CommandType.Chat;
+        public Player Player => Main.LocalPlayer;
+        public void Reply(string text, Color color = default) => throw new Exception(text);
+    }
     private bool ran;
     private int assertions;
     private static object Call(Type type, string method, object instance, params object[] arguments) =>
@@ -216,6 +226,8 @@ public sealed class RuntimeChecks : ModSystem
             CheckPowerBomb(a, b, c);
             CheckMatchControls(a);
             CheckAdminPermissions(a, c);
+            CheckBulkCraft(a);
+            MeasureSlopes();
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -280,12 +292,98 @@ public sealed class RuntimeChecks : ModSystem
         Call(typeof(PvPAdventure.Common.Security.AdminPermissions), "Grant", null, player.whoAmI, false);
     }
 
+    private void CheckBulkCraft(Player player)
+    {
+        using var popup = new MonoMod.RuntimeDetour.Hook(typeof(PopupText).GetMethod(nameof(PopupText.NewText),
+            new[] { typeof(PopupTextContext), typeof(Item), typeof(int), typeof(bool), typeof(bool) }),
+            (PopupHook)((original, context, item, stack, noStack, longText) => -1));
+        Main.netMode = NetmodeID.SinglePlayer;
+        Main.myPlayer = player.whoAmI;
+        player.chest = -1;
+        foreach (Item item in player.inventory) item.TurnToAir();
+        foreach (Item item in player.bank4.item) item.TurnToAir();
+        Recipe recipe = Main.recipe.First(r => r != null && r.createItem.type == ItemID.Torch &&
+            r.requiredItem.Any(i => i.type == ItemID.Wood) && r.requiredItem.Any(i => i.type == ItemID.Gel));
+        void Prepare(int amount, bool shift, int cursorStack = 0)
+        {
+            player.inventory[0] = new Item(ItemID.Wood, amount);
+            player.inventory[1] = new Item(ItemID.Gel, amount);
+            Main.mouseItem = cursorStack == 0 ? new Item() : new Item(ItemID.Torch, cursorStack);
+            Main.keyState = shift ? new Microsoft.Xna.Framework.Input.KeyboardState(Microsoft.Xna.Framework.Input.Keys.LeftShift) : default;
+            Recipe.FindRecipes();
+        }
+        Prepare(20, false);
+        Main.CraftItem(recipe);
+        Check(Main.mouseItem.stack == 3 && player.inventory[0].stack == 19, "Normal click crafts one recipe batch");
+        Prepare(20, true);
+        Main.CraftItem(recipe);
+        Check(Main.mouseItem.stack == 30 && player.inventory[0].stack == 10, "Shift crafts ten recipe batches with real ingredient consumption");
+        Prepare(4, true);
+        Main.CraftItem(recipe);
+        Check(Main.mouseItem.stack == 12 && player.inventory[0].IsAir && player.inventory[1].IsAir,
+            "Shift stops at available ingredients without free crafts");
+        Prepare(20, true, new Item(ItemID.Torch).maxStack - 6);
+        Main.CraftItem(recipe);
+        Check(Main.mouseItem.stack == Main.mouseItem.maxStack && player.inventory[0].stack == 18,
+            "Shift stops when cursor stack fills without losing ingredients");
+        Main.keyState = default;
+    }
+
+    private void MeasureSlopes()
+    {
+        int x = 500, y = 200;
+        for (int i = x - 12; i <= x + 12; i++)
+            for (int j = y - 6; j <= y + 2; j++)
+            {
+                Tile tile = Main.tile[i, j];
+                tile.ClearEverything();
+                if (j >= y + 1) { tile.HasTile = true; tile.TileType = TileID.Stone; }
+            }
+        Tile slope = Main.tile[x, y];
+        slope.HasTile = true;
+        slope.TileType = TileID.Stone;
+        var region = ModContent.GetInstance<PvPAdventure.Common.Spawnbox.RegionManager>();
+        var handler = (On_Collision.hook_TileCollision)Delegate.CreateDelegate(typeof(On_Collision.hook_TileCollision), region,
+            region.GetType().GetMethod("OnCollisionTileCollision", BindingFlags.NonPublic | BindingFlags.Instance));
+        float Measure(int direction)
+        {
+            slope.Slope = direction == 1 ? SlopeType.SlopeDownRight : SlopeType.SlopeDownLeft;
+            Vector2 position = new(x * 16 + (direction == 1 ? -60 : 56), (y + 1) * 16 - 42);
+            float start = position.X, step = 1, offset = 0;
+            for (int frame = 0; frame < 40; frame++)
+            {
+                Vector2 velocity = new(direction * 3, 0.4f);
+                Collision.StepUp(ref position, ref velocity, 20, 42, ref step, ref offset);
+                velocity = Collision.TileCollision(position, velocity, 20, 42);
+                position += velocity;
+                Vector4 result = Collision.SlopeCollision(position, velocity, 20, 42, 0.4f);
+                position = new Vector2(result.X, result.Y);
+            }
+            return (position.X - start) * direction;
+        }
+        float modRight = Measure(1), modLeft = Measure(-1);
+        On_Collision.TileCollision -= handler;
+        float vanillaRight, vanillaLeft;
+        try { vanillaRight = Measure(1); vanillaLeft = Measure(-1); }
+        finally { On_Collision.TileCollision += handler; }
+        Mod.Logger.Info($"SLOPE_MEASURE mod right={modRight} left={modLeft}; vanilla right={vanillaRight} left={vanillaLeft}");
+        Check(modRight == vanillaRight && modLeft == vanillaLeft, "Mod region collision matches vanilla on mirrored wilderness slopes");
+    }
+
     private void CheckAdminPermissions(Player owner, Player guest)
     {
         Main.netMode = NetmodeID.Server;
         using var transport = new MonoMod.RuntimeDetour.Hook(typeof(ModPacket).GetMethod(nameof(ModPacket.Send)),
             (PacketHook)((original, packet, toClient, ignoreClient) => { }));
         Type permissions = typeof(PvPAdventure.Common.Security.AdminPermissions);
+        string parsedPassword = null;
+        using (var commandHook = new MonoMod.RuntimeDetour.Hook(
+            typeof(PvPAdventure.Common.Security.AdminPermissions.AdminCommand).GetMethod("Action"),
+            (CommandHook)((original, command, caller, input, args) => parsedPassword = args.Single())))
+        {
+            Call(typeof(CommandLoader), "HandleCommand", null, "/pvpadmin AbC012dEf", new TestChatCaller());
+        }
+        Check(parsedPassword == "AbC012dEf", "Real chat command parser preserves administrator password case");
         Check(!PvPAdventure.Common.Security.AdminPermissions.HasAccess(guest.whoAmI), "Guest starts without administrator permission");
         string password = File.ReadAllText(Path.Combine(Main.SavePath, "PvPAdventure", "AdminPassword.txt")).Trim();
         Check(!(bool)Call(permissions, "Authenticate", null, "wrong") && (bool)Call(permissions, "Authenticate", null, password),
