@@ -23,8 +23,6 @@ public class NPCRules : GlobalNPC
 {
     public override void Load()
     {
-        // Prevent Empress of Light from targeting players during daytime, so she will despawn.
-        On_NPC.TargetClosest += OnNPCTargetClosest;
         // Prevent Empress of Light from being enraged, so she won't instantly kill players.
         On_NPC.ShouldEmpressBeEnraged += OnNPCShouldEmpressBeEnraged;
         // Clients and servers sync the Shimmer buff upon all collisions constantly for NPCs.
@@ -138,17 +136,6 @@ public class NPCRules : GlobalNPC
                 ChatHelper.BroadcastChatMessage(NetworkText.FromKey("Announcement.HasAwoken", npc.GetTypeNetName()),
                     new(175, 75, 255));
         }
-    }
-
-    private void OnNPCTargetClosest(On_NPC.orig_TargetClosest orig, NPC self, bool facetarget)
-    {
-        if (self.type == NPCID.HallowBoss && Main.IsItDay())
-        {
-            self.target = -1;
-            return;
-        }
-
-        orig(self, facetarget);
     }
 
     private bool OnNPCShouldEmpressBeEnraged(On_NPC.orig_ShouldEmpressBeEnraged orig)

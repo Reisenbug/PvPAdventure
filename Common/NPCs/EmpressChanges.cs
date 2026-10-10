@@ -16,10 +16,9 @@ public class EmpressDayTimeNPC : GlobalNPC
 
     public override void ModifyHitPlayer(NPC npc, Player target, ref Player.HurtModifiers modifiers)
     {
-        modifiers.SourceDamage *= 0.75f;
         if (Main.dayTime)
         {
-            modifiers.SourceDamage *= 0.01f;
+            modifiers.SourceDamage *= 2f;
         }
     }
 
@@ -28,7 +27,7 @@ public class EmpressDayTimeNPC : GlobalNPC
         if (Main.dayTime)
         {
             // Empress takes 75% less damage during the day
-            modifiers.FinalDamage *= 0.40f;
+            modifiers.FinalDamage *= 0.25f;
         }
     }
 }

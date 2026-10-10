@@ -38,33 +38,6 @@ public class ItemTooltips : GlobalItem
                 OverrideColor = Color.Red
             });
         }
-        else
-        {
-            var isUnderground = Main.LocalPlayer.position.Y > Main.worldSurface * 16;
-            var isHallow = Main.LocalPlayer.ZoneHallow;
-            if (item.type == ItemID.EmpressButterfly)
-            {
-                if (isUnderground)
-                {
-                    tooltips.Add(new TooltipLine(Mod, "NoUndergroundEmpressButterfly",
-                        Language.GetTextValue("Mods.PvPAdventure.Item.NoUndergroundEmpressButterfly"))
-                    {
-                        OverrideColor = Color.Red
-                    });
-                }
-            }
-            else if (item.type == ItemID.QueenSlimeCrystal)
-            {
-                if (isHallow && isUnderground)
-                {
-                    tooltips.Add(new TooltipLine(Mod, "NoUndergroundQueenSlimeCrystal",
-                        Language.GetTextValue("Mods.PvPAdventure.Item.NoUndergroundQueenSlimeCrystal"))
-                    {
-                        OverrideColor = Color.Red
-                    });
-                }
-            }
-        }
 
         // Possible EJ changes below
         if (item.type is ItemID.CrossNecklace or ItemID.StarVeil)

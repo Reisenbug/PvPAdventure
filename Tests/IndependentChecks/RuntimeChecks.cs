@@ -241,6 +241,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckNamedAdministrator(c);
             CheckArmorEnergy(a, c);
             CheckRecipesAndResources();
+            CheckBossBalance();
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -250,6 +251,40 @@ public sealed class RuntimeChecks : ModSystem
             Mod.Logger.Error("INDEPENDENT_CHECKS_FAILED", exception);
             Console.WriteLine(exception);
             Environment.Exit(1);
+        }
+    }
+
+    private void CheckBossBalance()
+    {
+        var config = ModContent.GetInstance<ServerConfig>();
+        var savedBalance = config.BossBalance;
+        int savedMode = Main.GameMode;
+        config.BossBalance = [];
+        Main.GameMode = 0;
+        try
+        {
+            foreach (var spec in new[]
+            {
+                (NPCID.SkeletronHead, 6600),
+                (NPCID.SkeletronHand, 600),
+                (NPCID.QueenBee, 6256),
+                (NPCID.WallofFlesh, 24000),
+                (NPCID.WallofFleshEye, 24000),
+                (NPCID.QueenSlimeBoss, 36000),
+                (NPCID.Plantera, 150000)
+            })
+            {
+                var npc = new NPC();
+                npc.SetDefaults(spec.Item1);
+                Check(npc.lifeMax == spec.Item2 && npc.life == spec.Item2,
+                    $"Classic boss {spec.Item1} starts with {spec.Item2} HP");
+            }
+            Check(config.BossBalance.Count == 0, "Default boss HP does not enable team health pools");
+        }
+        finally
+        {
+            Main.GameMode = savedMode;
+            config.BossBalance = savedBalance;
         }
     }
 

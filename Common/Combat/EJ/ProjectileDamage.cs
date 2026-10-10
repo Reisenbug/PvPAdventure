@@ -43,10 +43,9 @@ public class EmpressProjectiles : GlobalProjectile
     }
     public override void ModifyHitPlayer(Projectile projectile, Player target, ref Player.HurtModifiers modifiers)
     {
-        modifiers.SourceDamage *= 0.75f;
         if (Main.dayTime)
         {
-            modifiers.SourceDamage *= 0.0085f;
+            modifiers.SourceDamage *= 2f;
         }
     }
 }

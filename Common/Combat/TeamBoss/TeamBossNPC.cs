@@ -86,12 +86,19 @@ public sealed class TeamBossNPC : GlobalNPC
         var config = ModContent.GetInstance<ServerConfig>();
         var definition = new NPCDefinition(name);
 
-        if (!config.BossBalance.TryGetValue(definition, out var entry))
-            return;
-
-        entity.lifeMax = (int)(entity.lifeMax * entry.LifeMaxMultiplier);
+        config.BossBalance.TryGetValue(definition, out var entry);
+        float lifeMultiplier = entry?.LifeMaxMultiplier ?? entity.type switch
+        {
+            NPCID.SkeletronHead => 1.5f,
+            NPCID.QueenBee => 1.84f,
+            NPCID.WallofFlesh or NPCID.WallofFleshEye => 3f,
+            NPCID.QueenSlimeBoss => 2f,
+            NPCID.Plantera => 5f,
+            _ => 1f
+        };
+        entity.lifeMax = (int)(entity.lifeMax * lifeMultiplier);
         entity.life = entity.lifeMax;
-        entity.damage = (int)(entity.damage * entry.DamageMultiplier);
+        entity.damage = (int)(entity.damage * (entry?.DamageMultiplier ?? 1f));
     }
 
     private static void OnNPCPlayerInteraction(On_NPC.orig_PlayerInteraction orig, NPC self, int player)

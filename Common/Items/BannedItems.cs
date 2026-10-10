@@ -14,35 +14,6 @@ public class BannedItems : GlobalItem
 {
     public override bool CanUseItem(Item item, Player player)
     {
-        var isUnderground = player.position.Y > Main.worldSurface * 16;
-        var isHallow = player.ZoneHallow;
-
-        if (item.type == ItemID.EmpressButterfly)
-        {
-            if (isUnderground)
-                return false;
-        }
-        else if (item.type == ItemID.QueenSlimeCrystal)
-        {
-            if (isUnderground)
-                return false;
-        }
-        else if (item.type == ItemID.MechanicalEye)
-        {
-            if (isUnderground)
-                return false;
-        }
-        else if (item.type == ItemID.MechanicalSkull)
-        {
-            if (isUnderground)
-                return false;
-        }
-        else if (item.type == ItemID.MechanicalWorm)
-        {
-            if (isUnderground)
-                return false;
-        }
-
         return !ModContent.GetInstance<ServerConfig>().PreventUse
             .Any(itemDefinition => item.type == itemDefinition.Type);
     }
