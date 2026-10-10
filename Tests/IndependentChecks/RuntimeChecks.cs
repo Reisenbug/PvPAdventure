@@ -246,6 +246,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckBossLoot();
             CheckSkeletronAI(a);
             CheckGoblinDelay(a);
+            CheckBossSpawnPause(a);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -255,6 +256,51 @@ public sealed class RuntimeChecks : ModSystem
             Mod.Logger.Error("INDEPENDENT_CHECKS_FAILED", exception);
             Console.WriteLine(exception);
             Environment.Exit(1);
+        }
+    }
+
+    private void CheckBossSpawnPause(Player player)
+    {
+        int savedNetmode = Main.netMode;
+        try
+        {
+            Main.netMode = NetmodeID.SinglePlayer;
+            foreach (int type in new[] { NPCID.SkeletronHead, NPCID.CultistBoss, NPCID.Plantera })
+            {
+                var npc = new NPC();
+                npc.SetDefaults(type);
+                var pause = npc.GetGlobalNPC<PvPAdventure.Common.NPCs.BossSpawnPause>();
+                int style = npc.aiStyle;
+                npc.velocity = Vector2.One;
+                pause.OnSpawn(npc, npc.GetSource_FromAI());
+                int cooldownSlot = 0;
+                Check(pause.IsPaused && npc.dontTakeDamage && npc.velocity == Vector2.Zero &&
+                    !pause.CanHitPlayer(npc, player, ref cooldownSlot) && !pause.CheckActive(npc),
+                    $"Boss {type} waits without movement, damage or despawn");
+                Main.netMode = NetmodeID.MultiplayerClient;
+                for (int i = 0; i < 10; i++) Check(!pause.PreAI(npc), $"Client does not finish boss {type} spawn wait");
+                Main.netMode = NetmodeID.SinglePlayer;
+                int duration = type == NPCID.Plantera ? 1800 : 3600;
+                for (int i = 0; i < duration - 1; i++) pause.PreAI(npc);
+                Check(pause.IsPaused && npc.dontTakeDamage, $"Boss {type} remains paused until duration ends");
+                using var stream = new MemoryStream();
+                using var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, true);
+                pause.SendExtraAI(npc, null, writer);
+                stream.Position = 0;
+                var client = new NPC();
+                client.SetDefaults(type);
+                var clientPause = client.GetGlobalNPC<PvPAdventure.Common.NPCs.BossSpawnPause>();
+                using var reader = new BinaryReader(stream, System.Text.Encoding.UTF8, true);
+                clientPause.ReceiveExtraAI(client, null, reader);
+                Check(clientPause.IsPaused && client.dontTakeDamage, $"Boss {type} pause state syncs to client");
+                Check(pause.PreAI(npc) && !pause.IsPaused && !npc.dontTakeDamage && npc.aiStyle == style &&
+                    pause.CanHitPlayer(npc, player, ref cooldownSlot) && pause.CheckActive(npc),
+                    $"Boss {type} restores original AI and vulnerability at duration boundary");
+            }
+        }
+        finally
+        {
+            Main.netMode = savedNetmode;
         }
     }
 
