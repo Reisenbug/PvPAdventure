@@ -244,6 +244,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckRecipesAndResources();
             CheckBossBalance();
             CheckBossLoot();
+            CheckSkeletronAI(a);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -253,6 +254,57 @@ public sealed class RuntimeChecks : ModSystem
             Mod.Logger.Error("INDEPENDENT_CHECKS_FAILED", exception);
             Console.WriteLine(exception);
             Environment.Exit(1);
+        }
+    }
+
+    private void CheckSkeletronAI(Player player)
+    {
+        int savedMode = Main.GameMode;
+        bool savedDay = Main.dayTime;
+        var savedSlots = new[] { Main.npc[195], Main.npc[196], Main.npc[197] };
+        Vector2 savedPosition = player.position;
+        bool savedActive = player.active;
+        bool savedDead = player.dead;
+        try
+        {
+            Main.dayTime = false;
+            player.active = true;
+            player.dead = false;
+            player.position = new Vector2(Main.spawnTileX * 16, Main.spawnTileY * 16);
+            foreach (int mode in new[] { 0, 1 })
+            {
+                Main.GameMode = 0;
+                var head = Main.npc[195] = new NPC();
+                head.SetDefaults(NPCID.SkeletronHead);
+                head.whoAmI = 195;
+                head.active = true;
+                head.target = player.whoAmI;
+                head.position = player.position - new Vector2(0, 200);
+                head.ai[0] = 1;
+                head.ai[2] = 1;
+                for (int i = 196; i <= 197; i++)
+                {
+                    var hand = Main.npc[i] = new NPC();
+                    hand.SetDefaults(NPCID.SkeletronHand);
+                    hand.whoAmI = i;
+                    hand.active = true;
+                    hand.ai[1] = 195;
+                }
+                Main.GameMode = mode;
+                head.VanillaAI();
+                Mod.Logger.Info($"SKELETRON_AI mode={mode} defense={head.defense} lifeMax={head.lifeMax} worldExpert={Main.expertMode}");
+                Check(head.defense == 60, $"Skeletron expert AI defense in world mode {mode}");
+                Check(Main.GameMode == mode && head.lifeMax == 6600, "Skeletron AI preserves world difficulty and classic health");
+            }
+        }
+        finally
+        {
+            Main.GameMode = savedMode;
+            Main.dayTime = savedDay;
+            player.position = savedPosition;
+            player.active = savedActive;
+            player.dead = savedDead;
+            for (int i = 0; i < savedSlots.Length; i++) Main.npc[195 + i] = savedSlots[i];
         }
     }
 
