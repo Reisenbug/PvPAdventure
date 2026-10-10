@@ -348,14 +348,14 @@ public static class AdventureDropDatabase
             case NPCID.Golem:
                 // Remove Picksaw drop, and the big loot pool -- we will re-create it ourselves.
                 npcLoot.RemoveWhere(drop =>
-                    (drop is CommonDrop commonDrop && commonDrop.itemId == ItemID.Picksaw) ||
+                    (drop is CommonDrop commonDrop && commonDrop.itemId is ItemID.Picksaw or ItemID.BeetleHusk) ||
                     drop is LeadingConditionRule);
 
                 var stynger = ItemDropRule.Common(ItemID.Stynger);
                 stynger.OnSuccess(ItemDropRule.Common(ItemID.StyngerBolt, 1, 60, 99), hideLootReport: true);
 
                 npcLoot.Add(
-                    new OneFromRulesRule(1,
+                    new FewFromRulesRule(2, 1,
                         stynger,
                         ItemDropRule.Common(ItemID.PossessedHatchet),
                         ItemDropRule.Common(ItemID.GolemFist),
@@ -364,12 +364,13 @@ public static class AdventureDropDatabase
                     )
                 );
 
-                npcLoot.Add(ItemDropRule.OneFromOptions(1,
+                npcLoot.Add(ItemDropRule.FewFromOptions(2, 1,
                     ItemID.Picksaw,
                     ItemID.EyeoftheGolem,
                     ItemID.SunStone,
                     ItemID.ShinyStone)
                 );
+                npcLoot.Add(ItemDropRule.Common(ItemID.BeetleHusk, 1, 12, 16));
 
                 break;
 
@@ -378,14 +379,14 @@ public static class AdventureDropDatabase
                 npcLoot.RemoveWhere(drop => drop is LeadingConditionRule);
 
                 // Always get two pieces of the Crystal Ninja set, separate from other drops.
-                npcLoot.Add(ItemDropRule.FewFromOptions(3, 1,
+                npcLoot.Add(ItemDropRule.FewFromOptions(2, 1,
                         ItemID.CrystalNinjaHelmet,
                         ItemID.CrystalNinjaChestplate,
                         ItemID.CrystalNinjaLeggings
                     )
                 );
 
-                npcLoot.Add(ItemDropRule.OneFromOptions(1,
+                npcLoot.Add(ItemDropRule.FewFromOptions(2, 1,
                         ItemID.Smolstar,
                         ItemID.QueenSlimeHook,
                         ItemID.QueenSlimeMountSaddle
@@ -506,13 +507,15 @@ public static class AdventureDropDatabase
 
                 npcLoot.RemoveWhere(drop => drop is LeadingConditionRule);
                 npcLoot.Add(
-                    new OneFromRulesRule(1,
+                    new FewFromRulesRule(2, 1,
                         ItemDropRule.Common(ItemID.BubbleGun),
                         ItemDropRule.Common(ItemID.Tsunami),
                         ItemDropRule.Common(ItemID.RazorbladeTyphoon),
-                        ItemDropRule.Common(ItemID.Flairon)
+                        ItemDropRule.Common(ItemID.Flairon),
+                        ItemDropRule.Common(ItemID.TempestStaff)
                     )
                 );
+                npcLoot.Add(ItemDropRule.Common(ItemID.SharkFin, 1, 14, 14));
                 foreach (var drop in drops)
                 {
                     ModifyDropRate(drop, ItemID.FishronWings, 0, 1);
@@ -521,6 +524,12 @@ public static class AdventureDropDatabase
 
 
             case NPCID.HallowBoss:
+                npcLoot.RemoveWhere(drop => drop is LeadingConditionRule);
+                npcLoot.Add(new FewFromRulesRule(2, 1,
+                    ItemDropRule.Common(ItemID.PiercingStarlight),
+                    ItemDropRule.Common(ItemID.FairyQueenMagicItem),
+                    ItemDropRule.Common(ItemID.FairyQueenRangedItem),
+                    ItemDropRule.Common(ItemID.RainbowWhip)));
                 foreach (var drop in drops)
                     ModifyDropRate(drop, ItemID.RainbowWings, 0, 1);
                 break;
@@ -562,8 +571,10 @@ public static class AdventureDropDatabase
             case NPCID.Plantera:
                 npcLoot.RemoveWhere(drop => drop is LeadingConditionRule);
                 npcLoot.Add(ItemDropRule.Common(ItemID.TempleKey, 1, 1, 1));
+                npcLoot.Add(ItemDropRule.Common(ItemID.TheAxe));
+                npcLoot.Add(ItemDropRule.Common(ItemID.ThornHook));
                 npcLoot.Add(
-                    new OneFromRulesRule(1,
+                    new FewFromRulesRule(2, 1,
                         ItemDropRule.Common(ItemID.Seedler),
                         ItemDropRule.Common(ItemID.LeafBlower),
                         ItemDropRule.Common(ItemID.WaspGun),
@@ -573,7 +584,7 @@ public static class AdventureDropDatabase
                 var grenadelauncher = ItemDropRule.Common(ItemID.GrenadeLauncher);
                 grenadelauncher.OnSuccess(ItemDropRule.Common(ItemID.RocketIII, 1, 400, 500), hideLootReport: true);
                 npcLoot.Add(
-                    new OneFromRulesRule(1,
+                    new FewFromRulesRule(2, 1,
                         grenadelauncher,
                         ItemDropRule.Common(ItemID.NettleBurst),
                         ItemDropRule.Common(ItemID.FlowerPow),

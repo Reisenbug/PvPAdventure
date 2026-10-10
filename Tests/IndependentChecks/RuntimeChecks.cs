@@ -10,6 +10,7 @@ using PvPAdventure.Common.Independent;
 using PvPAdventure.Core.Config;
 using Terraria;
 using Terraria.ID;
+using Terraria.GameContent.ItemDropRules;
 using Terraria.ModLoader;
 
 namespace IndependentChecks;
@@ -242,6 +243,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckArmorEnergy(a, c);
             CheckRecipesAndResources();
             CheckBossBalance();
+            CheckBossLoot();
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -252,6 +254,52 @@ public sealed class RuntimeChecks : ModSystem
             Console.WriteLine(exception);
             Environment.Exit(1);
         }
+    }
+
+    private void CheckBossLoot()
+    {
+        foreach (int npcType in new[] { NPCID.Golem, NPCID.Plantera, NPCID.DukeFishron, NPCID.HallowBoss })
+        {
+            var rules = Main.ItemDropsDB.GetRulesForNPCID(npcType, false).OfType<FewFromRulesRule>().ToArray();
+            Check(rules.Length == (npcType == NPCID.Plantera ? 2 : 1), $"Boss {npcType} registered weapon pools");
+            foreach (var rule in rules)
+            {
+                Check(rule.amount == 2 && rule.chanceDenominator == 1, $"Boss {npcType} guarantees two weapons per pool");
+                for (int seed = 0; seed < 5; seed++)
+                {
+                    var selected = new System.Collections.Generic.List<int>();
+                    var result = rule.TryDroppingItem(new DropAttemptInfo { rng = new Terraria.Utilities.UnifiedRandom(seed) },
+                        (option, info) =>
+                        {
+                            selected.Add(((CommonDrop)option).itemId);
+                            return new ItemDropAttemptResult { State = ItemDropAttemptResultState.Success };
+                        });
+                    Check(result.State == ItemDropAttemptResultState.Success && selected.Count == 2 && selected.Distinct().Count() == 2,
+                        $"Boss {npcType} actually selects two distinct weapons, seed {seed}");
+                }
+            }
+        }
+        foreach (var spec in new[] { (NPCID.QueenSlimeBoss, 2), (NPCID.Golem, 1) })
+        {
+            var pools = Main.ItemDropsDB.GetRulesForNPCID(spec.Item1, false).OfType<FewFromOptionsDropRule>().ToArray();
+            Check(pools.Length == spec.Item2 && pools.All(p => p.amount == 2 && p.chanceNumerator == 1 && p.chanceDenominator == 1),
+                $"Boss {spec.Item1} guarantees two items from each equipment pool");
+        }
+        foreach (var spec in new[]
+        {
+            (NPCID.Golem, ItemID.BeetleHusk, 12, 16),
+            (NPCID.DukeFishron, ItemID.SharkFin, 14, 14),
+            (NPCID.Plantera, ItemID.TempleKey, 1, 1),
+            (NPCID.Plantera, ItemID.TheAxe, 1, 1),
+            (NPCID.Plantera, ItemID.ThornHook, 1, 1)
+        })
+        {
+            var drops = Main.ItemDropsDB.GetRulesForNPCID(spec.Item1, false).OfType<CommonDrop>().Where(d => d.itemId == spec.Item2).ToArray();
+            Check(drops.Length == 1 && drops[0].chanceDenominator == 1 && drops[0].amountDroppedMinimum == spec.Item3 && drops[0].amountDroppedMaximum == spec.Item4,
+                $"Boss {spec.Item1} guaranteed material {spec.Item2} occurs once with correct quantity");
+        }
+        var fishron = Main.ItemDropsDB.GetRulesForNPCID(NPCID.DukeFishron, false).OfType<FewFromRulesRule>().Single();
+        Check(fishron.options.OfType<CommonDrop>().Any(d => d.itemId == ItemID.TempestStaff), "Fishron weapon pool includes Tempest Staff");
     }
 
     private void CheckBossBalance()
