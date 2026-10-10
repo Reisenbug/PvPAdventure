@@ -245,6 +245,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckBossBalance();
             CheckBossLoot();
             CheckSkeletronAI(a);
+            CheckGoblinDelay(a);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -254,6 +255,80 @@ public sealed class RuntimeChecks : ModSystem
             Mod.Logger.Error("INDEPENDENT_CHECKS_FAILED", exception);
             Console.WriteLine(exception);
             Environment.Exit(1);
+        }
+    }
+
+    private void CheckGoblinDelay(Player player)
+    {
+        var system = ModContent.GetInstance<PvPAdventure.Common.World.HardmodeGoblinInvasionSystem>();
+        var saved = new Terraria.ModLoader.IO.TagCompound();
+        system.SaveWorldData(saved);
+        bool savedHardmode = Main.hardMode;
+        bool savedDay = Main.dayTime;
+        bool savedDowned = NPC.downedGoblins;
+        int savedNetmode = Main.netMode;
+        int savedCrystals = player.ConsumedLifeCrystals;
+        var invasionFields = typeof(Main).GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(f => !f.IsLiteral && !f.IsInitOnly && f.Name.StartsWith("invasion", StringComparison.Ordinal))
+            .ToDictionary(f => f, f => f.GetValue(null));
+        int Dawns()
+        {
+            var state = new Terraria.ModLoader.IO.TagCompound();
+            system.SaveWorldData(state);
+            return state.GetInt("remainingDawns");
+        }
+        try
+        {
+            Main.netMode = NetmodeID.SinglePlayer;
+            Main.hardMode = false;
+            Main.dayTime = false;
+            NPC.downedGoblins = false;
+            Main.invasionType = 0;
+            player.ConsumedLifeCrystals = 5;
+            system.ClearWorld();
+            Main.hardMode = true;
+            system.PostUpdateWorld();
+            Check(Dawns() == 2 && Main.invasionType == 0, "Hardmode does not immediately start goblins");
+            Main.dayTime = true;
+            system.PostUpdateWorld();
+            Check(Dawns() == 1 && Main.invasionType == 0, "First hardmode dawn does not start goblins");
+            var pending = new Terraria.ModLoader.IO.TagCompound();
+            system.SaveWorldData(pending);
+            system.ClearWorld();
+            system.LoadWorldData(pending);
+            system.PostUpdateWorld();
+            Check(Dawns() == 1, "Reload preserves remaining dawn and does not count current dawn twice");
+            Main.dayTime = false;
+            system.PostUpdateWorld();
+            Main.netMode = NetmodeID.MultiplayerClient;
+            Main.dayTime = true;
+            system.PostUpdateWorld();
+            Check(Dawns() == 1 && Main.invasionType == 0, "Client cannot advance or start hardmode invasion");
+            Main.netMode = NetmodeID.SinglePlayer;
+            Main.invasionType = InvasionID.PirateInvasion;
+            system.PostUpdateWorld();
+            Check(Dawns() == 0 && Main.invasionType == InvasionID.PirateInvasion, "Second dawn waits for existing invasion");
+            Main.invasionType = 0;
+            system.PostUpdateWorld();
+            Check(Dawns() == -1 && Main.invasionType == InvasionID.GoblinArmy && Main.invasionSize > 0,
+                "Second dawn starts real goblin invasion once");
+            Main.invasionType = 0;
+            system.PostUpdateWorld();
+            Check(Main.invasionType == 0, "Finished hardmode invasion does not restart");
+            system.ClearWorld();
+            system.LoadWorldData(new Terraria.ModLoader.IO.TagCompound { ["wasHardmode"] = true });
+            system.PostUpdateWorld();
+            Check(Dawns() == -1 && Main.invasionType == 0, "Legacy hardmode world does not repeat old immediate invasion");
+        }
+        finally
+        {
+            Main.hardMode = savedHardmode;
+            Main.dayTime = savedDay;
+            NPC.downedGoblins = savedDowned;
+            Main.netMode = savedNetmode;
+            player.ConsumedLifeCrystals = savedCrystals;
+            foreach (var field in invasionFields) field.Key.SetValue(null, field.Value);
+            system.LoadWorldData(saved);
         }
     }
 

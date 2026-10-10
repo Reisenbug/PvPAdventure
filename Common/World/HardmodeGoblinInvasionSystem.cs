@@ -1,62 +1,72 @@
-﻿using Terraria;
+using PvPAdventure.Common.GameTimer;
+using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
 
 namespace PvPAdventure.Common.World;
 
-/// <summary>
-/// - Triggers a Goblin Army invasion when entering Hardmode
-/// - Ensures the invasion only happens once
-/// - Persists Hardmode state across world loads
-/// </summary>
 public class HardmodeGoblinInvasionSystem : ModSystem
 {
-    private bool wasHardmode = false;
+    private bool wasHardmode;
+    private bool wasDaytime;
+    private int remainingDawns = -1;
+
+    public override void ClearWorld()
+    {
+        wasHardmode = false;
+        wasDaytime = Main.dayTime;
+        remainingDawns = -1;
+    }
 
     public override void PostUpdateWorld()
     {
-        // Check if world just entered hardmode
-        if (Main.hardMode && !wasHardmode)
-        {
-            // Check if goblin army hasn't been defeated yet
-            if (!NPC.downedGoblins)
-            {
-                // Start goblin invasion
-                Main.StartInvasion(InvasionID.GoblinArmy);
+        if (Main.netMode == NetmodeID.MultiplayerClient || Main.gamePaused ||
+            ModContent.GetInstance<PauseManager>().IsPaused)
+            return;
 
-                // Send message to all players
-                if (Main.netMode == NetmodeID.Server)
-                {
-                    NetMessage.SendData(MessageID.WorldData);
-                }
-            }
-
-            wasHardmode = true;
-        }
-
-        // Update state
         if (!Main.hardMode)
         {
-            wasHardmode = false;
+            ClearWorld();
+            return;
         }
+
+        if (Main.hardMode && !wasHardmode)
+        {
+            remainingDawns = NPC.downedGoblins ? -1 : 2;
+            wasHardmode = true;
+            wasDaytime = Main.dayTime;
+        }
+
+        if (remainingDawns > 0 && Main.dayTime && !wasDaytime)
+            remainingDawns--;
+
+        if (NPC.downedGoblins)
+            remainingDawns = -1;
+
+        if (remainingDawns == 0 && Main.invasionType == 0)
+        {
+            Main.StartInvasion(InvasionID.GoblinArmy);
+            if (Main.invasionType == InvasionID.GoblinArmy)
+            {
+                remainingDawns = -1;
+                if (Main.netMode == NetmodeID.Server)
+                    NetMessage.SendData(MessageID.WorldData);
+            }
+        }
+        wasDaytime = Main.dayTime;
     }
 
     public override void SaveWorldData(TagCompound tag)
     {
-        // Save whether we were in hardmode
         tag["wasHardmode"] = wasHardmode;
+        tag["remainingDawns"] = remainingDawns;
     }
 
     public override void LoadWorldData(TagCompound tag)
     {
-        // Load saved state
         wasHardmode = tag.GetBool("wasHardmode");
-
-        // If loading into hardmode, set flag appropriately
-        if (Main.hardMode)
-        {
-            wasHardmode = true;
-        }
+        remainingDawns = tag.ContainsKey("remainingDawns") ? tag.GetInt("remainingDawns") : -1;
+        wasDaytime = Main.dayTime;
     }
 }
