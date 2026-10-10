@@ -1161,6 +1161,44 @@ public sealed class RuntimeChecks : ModSystem
         slope.HasTile = true;
         slope.TileType = TileID.Stone;
         var region = ModContent.GetInstance<PvPAdventure.Common.Spawnbox.RegionManager>();
+        float MeasureFullUpdate(int direction)
+        {
+            var savedPlayer = Main.player[4];
+            int savedNetmode = Main.netMode;
+            var player = new Player { whoAmI = 4, active = true };
+            Main.player[4] = player;
+            Main.netMode = NetmodeID.SinglePlayer;
+            try
+            {
+                slope.Slope = direction == 1 ? SlopeType.SlopeDownRight : SlopeType.SlopeDownLeft;
+                player.position = new Vector2(x * 16 + (direction == 1 ? -20 : 16), (y + 1) * 16 - 42);
+                float start = player.position.X;
+                for (int frame = 0; frame < 40; frame++)
+                {
+                    player.controlRight = direction == 1;
+                    player.controlLeft = direction == -1;
+                    player.Update(4);
+                    if (frame < 3 || frame == 39)
+                        Mod.Logger.Info($"SLOPE_FULL_FRAME dir={direction} frame={frame} position={player.position} velocity={player.velocity} ghost={player.ghost}");
+                }
+                return (player.position.X - start) * direction;
+            }
+            finally
+            {
+                Main.player[4] = savedPlayer;
+                Main.netMode = savedNetmode;
+            }
+        }
+        float fullRight = MeasureFullUpdate(1), fullLeft = MeasureFullUpdate(-1);
+        Mod.Logger.Info($"SLOPE_FULL_UPDATE runtime={Environment.Version} right={fullRight} left={fullLeft}");
+        Check(fullRight > 40f && fullLeft > 40f && fullRight == fullLeft,
+            "Full Player.Update crosses exact-corner slopes in both directions");
+        region.Unload();
+        region.Load();
+        float reloadedRight = MeasureFullUpdate(1), reloadedLeft = MeasureFullUpdate(-1);
+        Mod.Logger.Info($"SLOPE_FULL_REHOOK runtime={Environment.Version} right={reloadedRight} left={reloadedLeft}");
+        Check(reloadedRight == fullRight && reloadedLeft == fullLeft,
+            "Player collision hook reload preserves full exact-corner movement");
         float Measure(int direction, bool touching = false, float offsetX = 0)
         {
             slope.Slope = direction == 1 ? SlopeType.SlopeDownRight : SlopeType.SlopeDownLeft;
