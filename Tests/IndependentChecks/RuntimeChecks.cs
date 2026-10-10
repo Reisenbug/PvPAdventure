@@ -247,6 +247,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckSkeletronAI(a);
             CheckGoblinDelay(a);
             CheckBossSpawnPause(a);
+            CheckBossBaitProgression(a);
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -256,6 +257,55 @@ public sealed class RuntimeChecks : ModSystem
             Mod.Logger.Error("INDEPENDENT_CHECKS_FAILED", exception);
             Console.WriteLine(exception);
             Environment.Exit(1);
+        }
+    }
+
+    private void CheckBossBaitProgression(Player player)
+    {
+        bool savedGolem = NPC.downedGolemBoss;
+        bool savedDay = Main.dayTime;
+        bool savedHallow = player.ZoneHallow;
+        bool savedMushroom = player.ZoneGlowshroom;
+        var rules = new PvPAdventure.Common.NPCs.BossBaitProgression();
+        try
+        {
+            NPC.downedGolemBoss = false;
+            foreach (int type in new[] { NPCID.TruffleWorm, NPCID.EmpressButterfly })
+            {
+                var npc = new NPC();
+                npc.SetDefaults(type);
+                npc.active = true;
+                rules.OnSpawn(npc, npc.GetSource_FromAI());
+                Check(!npc.active && npc.life == 0, $"Boss bait {type} cannot spawn before Golem");
+            }
+            var pool = new System.Collections.Generic.Dictionary<int, float>
+                { [0] = 1f, [NPCID.TruffleWorm] = 1f, [NPCID.EmpressButterfly] = 1f };
+            rules.EditSpawnPool(pool, new NPCSpawnInfo { Player = player });
+            Check(pool.Count == 1 && pool.ContainsKey(0), "Early boss bait entries removed without changing vanilla pool");
+            NPC.downedGolemBoss = true;
+            Main.dayTime = false;
+            player.ZoneHallow = true;
+            player.ZoneGlowshroom = false;
+            rules.EditSpawnPool(pool, new NPCSpawnInfo { Player = player, SpawnTileY = (int)Main.worldSurface,
+                SpawnTileType = TileID.HallowedGrass });
+            Check(pool[NPCID.EmpressButterfly] == 0.05f && !pool.ContainsKey(NPCID.TruffleWorm), "Post Golem surface Hallow lacewing weight");
+            pool.Remove(NPCID.EmpressButterfly);
+            Main.dayTime = true;
+            rules.EditSpawnPool(pool, new NPCSpawnInfo { Player = player, SpawnTileY = (int)Main.worldSurface,
+                SpawnTileType = TileID.HallowedGrass });
+            Check(!pool.ContainsKey(NPCID.EmpressButterfly), "No added daytime lacewing spawn");
+            player.ZoneHallow = false;
+            player.ZoneGlowshroom = true;
+            rules.EditSpawnPool(pool, new NPCSpawnInfo { Player = player, SpawnTileY = (int)Main.worldSurface + 1,
+                SpawnTileType = TileID.MushroomGrass });
+            Check(pool[NPCID.TruffleWorm] == 0.2f, "Post Golem underground mushroom worm weight");
+        }
+        finally
+        {
+            NPC.downedGolemBoss = savedGolem;
+            Main.dayTime = savedDay;
+            player.ZoneHallow = savedHallow;
+            player.ZoneGlowshroom = savedMushroom;
         }
     }
 
