@@ -17,6 +17,23 @@ namespace IndependentChecks;
 
 public sealed class IndependentChecks : Mod { }
 
+public sealed class ClientSlopeBootstrap : ModSystem
+{
+    public override void PostAddRecipes()
+    {
+        if (Main.dedServ || !Terraria.Program.LaunchParameters.ContainsKey("-slopeclient")) return;
+        Main.QueueMainThreadAction(() =>
+        {
+            Main.ActiveWorldFileData = Terraria.IO.WorldFile.GetAllMetadata("/tmp/pvpa-grapple-145/World.wld", false);
+            Main.ActivePlayerFileData = new Terraria.IO.PlayerFileData("/tmp/pvpa-slope-client.plr", false)
+                { Player = new Player { name = "SlopeCheck" } };
+            Main.player[Main.myPlayer] = Main.ActivePlayerFileData.Player;
+            Main.menuMode = 10;
+            WorldGen.playWorld();
+        });
+    }
+}
+
 public sealed class RuntimeChecks : ModSystem
 {
     private delegate int TextOriginal(Rectangle location, Color color, int amount, bool dramatic, bool dot);
@@ -51,6 +68,12 @@ public sealed class RuntimeChecks : ModSystem
         ran = true;
         try
         {
+            if (!Main.dedServ && Terraria.Program.LaunchParameters.ContainsKey("-slopeclient"))
+            {
+                MeasureSlopes();
+                Mod.Logger.Info($"CLIENT_SLOPE_CHECKS_PASSED {assertions}");
+                Environment.Exit(0);
+            }
             Main.netMode = NetmodeID.SinglePlayer;
             Main.myPlayer = 0;
             Player a = Main.player[0];
@@ -1161,13 +1184,15 @@ public sealed class RuntimeChecks : ModSystem
         slope.HasTile = true;
         slope.TileType = TileID.Stone;
         var region = ModContent.GetInstance<PvPAdventure.Common.Spawnbox.RegionManager>();
-        float MeasureFullUpdate(int direction)
+        float MeasureFullUpdate(int direction, bool local = false)
         {
             var savedPlayer = Main.player[4];
             int savedNetmode = Main.netMode;
+            int savedMyPlayer = Main.myPlayer;
             var player = new Player { whoAmI = 4, active = true };
             Main.player[4] = player;
             Main.netMode = NetmodeID.SinglePlayer;
+            if (local) Main.myPlayer = 4;
             try
             {
                 slope.Slope = direction == 1 ? SlopeType.SlopeDownRight : SlopeType.SlopeDownLeft;
@@ -1187,12 +1212,20 @@ public sealed class RuntimeChecks : ModSystem
             {
                 Main.player[4] = savedPlayer;
                 Main.netMode = savedNetmode;
+                Main.myPlayer = savedMyPlayer;
             }
         }
         float fullRight = MeasureFullUpdate(1), fullLeft = MeasureFullUpdate(-1);
         Mod.Logger.Info($"SLOPE_FULL_UPDATE runtime={Environment.Version} right={fullRight} left={fullLeft}");
         Check(fullRight > 40f && fullLeft > 40f && fullRight == fullLeft,
             "Full Player.Update crosses exact-corner slopes in both directions");
+        if (!Main.dedServ)
+        {
+            float localRight = MeasureFullUpdate(1, true), localLeft = MeasureFullUpdate(-1, true);
+            Mod.Logger.Info($"SLOPE_LOCAL_CLIENT runtime={Environment.Version} right={localRight} left={localLeft}");
+            Check(localRight > 40f && localLeft > 40f && localRight == localLeft,
+                "Local client Player.Update crosses exact-corner slopes in both directions");
+        }
         region.Unload();
         region.Load();
         float reloadedRight = MeasureFullUpdate(1), reloadedLeft = MeasureFullUpdate(-1);
