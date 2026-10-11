@@ -68,6 +68,12 @@ public sealed class RuntimeChecks : ModSystem
         ran = true;
         try
         {
+            if (Terraria.Program.LaunchParameters.ContainsKey("-randomteamchecks"))
+            {
+                CheckRandomTeams();
+                Console.WriteLine($"RANDOM_TEAM_CHECKS_PASSED {assertions}");
+                Environment.Exit(0);
+            }
             if (!Main.dedServ && Terraria.Program.LaunchParameters.ContainsKey("-slopeclient"))
             {
                 MeasureSlopes();
@@ -271,6 +277,7 @@ public sealed class RuntimeChecks : ModSystem
             CheckGoblinDelay(a);
             CheckBossSpawnPause(a);
             CheckBossBaitProgression(a);
+            CheckRandomTeams();
             Mod.Logger.Info($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Console.WriteLine($"INDEPENDENT_CHECKS_PASSED {assertions}");
             Environment.Exit(0);
@@ -641,6 +648,76 @@ public sealed class RuntimeChecks : ModSystem
             "Server configuration overrides shipped weapon multiplier");
         config.WeaponBalance.Damage.ItemDamage[new(ItemID.DaedalusStormbow)] = 0.35f;
         shot.active = child.active = false;
+    }
+
+    private void CheckRandomTeams()
+    {
+        int savedMode = Main.netMode;
+        var player = Main.player[0];
+        bool savedActive = player.active;
+        int savedTeam = player.team;
+        var file = Main.ActivePlayerFileData;
+        typeof(PlayerLoader).GetMethod("SetupPlayer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            .Invoke(null, new object[] { player });
+        var state = player.GetModPlayer<PvPAdventure.Common.Teams.TeamResyncPlayer>();
+        int packets = 0;
+        byte[] lastPacket = [];
+        using var transport = new MonoMod.RuntimeDetour.Hook(typeof(ModPacket).GetMethod(nameof(ModPacket.Send)),
+            (PacketHook)((original, packet, toClient, ignoreClient) =>
+            {
+                packets++;
+                lastPacket = ((MemoryStream)packet.BaseStream).ToArray();
+            }));
+        try
+        {
+            Main.netMode = NetmodeID.Server;
+            player.active = true;
+            state.PlayerDisconnect();
+            PvPAdventure.Common.Teams.PlayerTeamNetHandler.AssignRandomTeam(0);
+            int assigned = player.team;
+            Check(assigned >= 1 && assigned <= 5, "Join assignment selects a colored team, never neutral");
+            Check(lastPacket[^5] == 0 && BitConverter.ToInt32(lastPacket, lastPacket.Length - 4) == assigned,
+                "Server broadcasts the assigned player and team");
+            PvPAdventure.Common.Teams.PlayerTeamNetHandler.AssignRandomTeam(0);
+            Check(player.team == assigned, "Repeated join request does not reroll the team");
+            player.team = 5;
+            PvPAdventure.Common.Teams.PlayerTeamNetHandler.AssignRandomTeam(0);
+            Check(player.team == 5, "Repeated request preserves a subsequent manual team change");
+            var colors = new System.Collections.Generic.HashSet<int>();
+            for (int i = 0; i < 100; i++)
+            {
+                state.PlayerDisconnect();
+                PvPAdventure.Common.Teams.PlayerTeamNetHandler.AssignRandomTeam(0);
+                colors.Add(player.team);
+            }
+            Check(colors.SetEquals(new[] { 1, 2, 3, 4, 5 }), "New connections can receive each of the five colors");
+            int before = packets;
+            player.active = false;
+            PvPAdventure.Common.Teams.PlayerTeamNetHandler.AssignRandomTeam(0);
+            PvPAdventure.Common.Teams.PlayerTeamNetHandler.AssignRandomTeam(-1);
+            PvPAdventure.Common.Teams.PlayerTeamNetHandler.AssignRandomTeam(Main.maxPlayers);
+            Check(packets == before, "Inactive and invalid senders cannot receive team assignments");
+            Main.netMode = NetmodeID.MultiplayerClient;
+            PvPAdventure.Common.Teams.PlayerTeamNetHandler.AssignRandomTeam(0);
+            Check(packets == before, "Client cannot execute server team assignment");
+            Main.ActivePlayerFileData = new Terraria.IO.PlayerFileData("/tmp/ghost.plr", false);
+            state.OnEnterWorld();
+            for (int i = 0; i < 30; i++) state.PostUpdate();
+            Check(packets == before, "SSC temporary join does not request a team before character restoration");
+            Main.ActivePlayerFileData = new Terraria.IO.PlayerFileData("/tmp/character.SSC", false);
+            state.OnEnterWorld();
+            for (int i = 0; i < 30; i++) state.PostUpdate();
+            Check(packets == before + 1 && lastPacket[^1] == (byte)PvPAdventure.Core.Net.AdventurePacketIdentifier.RandomTeamRequest,
+                "Restored SSC character requests a server-assigned team without submitting an old team");
+        }
+        finally
+        {
+            state.PlayerDisconnect();
+            player.active = savedActive;
+            player.team = savedTeam;
+            Main.netMode = savedMode;
+            Main.ActivePlayerFileData = file;
+        }
     }
 
     private void CheckNamedAdministrator(Player player)

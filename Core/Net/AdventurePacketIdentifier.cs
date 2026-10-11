@@ -28,4 +28,5 @@ public enum AdventurePacketIdentifier : byte
     Portal,
     AdminPermissions,
     ArmorEnergy,
+    RandomTeamRequest,
 }

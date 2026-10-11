@@ -37,6 +37,10 @@ public class PvPAdventure : Mod
                 Common.Teams.PlayerTeamNetHandler.HandlePacket(r, whoAmI);
                 break;
 
+            case AdventurePacketIdentifier.RandomTeamRequest:
+                Common.Teams.PlayerTeamNetHandler.AssignRandomTeam(whoAmI);
+                break;
+
             case AdventurePacketIdentifier.GameTimer:
                 Common.GameTimer.GameTimerNetHandler.HandlePacket(r, whoAmI);
                 break;

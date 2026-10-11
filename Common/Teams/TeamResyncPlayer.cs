@@ -1,6 +1,7 @@
 ﻿namespace PvPAdventure.Common.Teams;
 
 using global::PvPAdventure.Core.Net;
+using System;
 using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
@@ -13,9 +14,20 @@ public class TeamResyncPlayer : ModPlayer
 {
     private int _resyncTimer;
     private bool _pendingResync;
+    internal bool RandomTeamAssigned;
+
+    public override void PlayerDisconnect()
+    {
+        RandomTeamAssigned = false;
+        _pendingResync = false;
+    }
 
     public override void OnEnterWorld()
     {
+        _pendingResync = false;
+        if (Common.SSC.SSC.IsEnabled && !Main.ActivePlayerFileData.Path.EndsWith(".SSC", StringComparison.OrdinalIgnoreCase))
+            return;
+
         if (Main.netMode == NetmodeID.MultiplayerClient)
         {
             _pendingResync = true;
@@ -36,12 +48,7 @@ public class TeamResyncPlayer : ModPlayer
         _pendingResync = false;
 
         var packet = ModContent.GetInstance<PvPAdventure>().GetPacket();
-        packet.Write((byte)AdventurePacketIdentifier.PlayerTeam);
-
-        // Send current team to server
-        Log.Chat("Team sync player: " + Player.name + ": Team." + (Terraria.Enums.Team)Player.team);
-
-        new Team((byte)Player.whoAmI, (Terraria.Enums.Team)Player.team).Serialize(packet);
+        packet.Write((byte)AdventurePacketIdentifier.RandomTeamRequest);
         packet.Send();
     }
 }
