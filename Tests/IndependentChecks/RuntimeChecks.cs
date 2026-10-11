@@ -1184,12 +1184,16 @@ public sealed class RuntimeChecks : ModSystem
         slope.HasTile = true;
         slope.TileType = TileID.Stone;
         var region = ModContent.GetInstance<PvPAdventure.Common.Spawnbox.RegionManager>();
-        float MeasureFullUpdate(int direction, bool local = false)
+        float MeasureFullUpdate(int direction, bool local = false, bool trace = true, bool replay = false)
         {
             var savedPlayer = Main.player[4];
             int savedNetmode = Main.netMode;
             int savedMyPlayer = Main.myPlayer;
-            var player = new Player { whoAmI = 4, active = true };
+            var player = replay ? Player.LoadPlayer("/tmp/pvpa-slope-Reisenberg.plr", false).Player : new Player();
+            player.whoAmI = 4;
+            player.active = true;
+            if (replay)
+                Mod.Logger.Info($"SLOPE_REPLAY_PLAYER name={player.name} lifeMax={player.statLifeMax} armor={string.Join(',', player.armor.Select(item => item.type))}");
             Main.player[4] = player;
             Main.netMode = NetmodeID.SinglePlayer;
             if (local) Main.myPlayer = 4;
@@ -1203,7 +1207,7 @@ public sealed class RuntimeChecks : ModSystem
                     player.controlRight = direction == 1;
                     player.controlLeft = direction == -1;
                     player.Update(4);
-                    if (frame < 3 || frame == 39)
+                    if (trace && (frame < 3 || frame == 39))
                         Mod.Logger.Info($"SLOPE_FULL_FRAME dir={direction} frame={frame} position={player.position} velocity={player.velocity} ghost={player.ghost}");
                 }
                 return (player.position.X - start) * direction;
@@ -1232,6 +1236,31 @@ public sealed class RuntimeChecks : ModSystem
         Mod.Logger.Info($"SLOPE_FULL_REHOOK runtime={Environment.Version} right={reloadedRight} left={reloadedLeft}");
         Check(reloadedRight == fullRight && reloadedLeft == fullLeft,
             "Player collision hook reload preserves full exact-corner movement");
+        for (int warmup = 0; warmup < 100; warmup++)
+        {
+            MeasureFullUpdate(1, trace: false);
+            MeasureFullUpdate(-1, trace: false);
+        }
+        System.Threading.Thread.Sleep(2000);
+        float warmRight = MeasureFullUpdate(1), warmLeft = MeasureFullUpdate(-1);
+        Mod.Logger.Info($"SLOPE_FULL_WARM runtime={Environment.Version} right={warmRight} left={warmLeft}");
+        Check(warmRight == fullRight && warmLeft == fullLeft,
+            "Warm runtime preserves full exact-corner movement after 8000 player frames");
+        if (File.Exists("/tmp/pvpa-slope-Reisenberg.plr"))
+        {
+            float replayRight = MeasureFullUpdate(1, replay: true), replayLeft = MeasureFullUpdate(-1, replay: true);
+            region.Unload();
+            float replayVanillaRight, replayVanillaLeft;
+            try
+            {
+                replayVanillaRight = MeasureFullUpdate(1, replay: true);
+                replayVanillaLeft = MeasureFullUpdate(-1, replay: true);
+            }
+            finally { region.Load(); }
+            Mod.Logger.Info($"SLOPE_REPLAY runtime={Environment.Version} mod right={replayRight} left={replayLeft}; no region right={replayVanillaRight} left={replayVanillaLeft}");
+            Check(replayRight > 40f && replayLeft > 40f && replayRight == replayVanillaRight && replayLeft == replayVanillaLeft,
+                "Saved player equipment crosses exact-corner slopes with and without region hooks");
+        }
         float Measure(int direction, bool touching = false, float offsetX = 0)
         {
             slope.Slope = direction == 1 ? SlopeType.SlopeDownRight : SlopeType.SlopeDownLeft;
