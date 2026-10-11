@@ -23,6 +23,9 @@ public class MechBossSpawnSystem : ModSystem
 
     public override void PostUpdateWorld()
     {
+        if (Main.netMode == NetmodeID.MultiplayerClient)
+            return;
+
         bool isNight = !Main.dayTime;
 
         if (isNight && wasDay)
@@ -54,7 +57,7 @@ public class MechBossSpawnSystem : ModSystem
             }
         }
 
-        if (Main.time >= 3600 && Main.time < 3700 && hasAnnouncedTonight && !hasSpawnedTonight)
+        if (Main.time >= 3600 && hasAnnouncedTonight && !hasSpawnedTonight)
         {
             if (selectedBoss != -1)
             {
@@ -76,8 +79,7 @@ public class MechBossSpawnSystem : ModSystem
                !NPC.AnyNPCs(NPCID.Retinazer) &&
                !NPC.AnyNPCs(NPCID.Spazmatism) &&
                !NPC.AnyNPCs(NPCID.SkeletronPrime) &&
-               HasUndefeatedMechBoss() &&
-               FindClosestPlayerToSpawn() != null;
+               HasUndefeatedMechBoss();
     }
 
     private bool HasUndefeatedMechBoss()
