@@ -2,6 +2,7 @@
 using PvPAdventure.Core.Input;
 using System.IO;
 using Terraria;
+using Terraria.GameInput;
 using Terraria.ID;
 using Terraria.ModLoader;
 
@@ -50,12 +51,15 @@ public class DashInputSystem : ModSystem
 
         // Only your own player's dash is controlled by your client config.
         var config = ModContent.GetInstance<ClientConfig>();
-        if (config.IsVanillaDashEnabled)
+        var dashKeybind = ModContent.GetInstance<Keybinds>().Dash;
+        var inputMode = PlayerInput.UsingGamepad ? InputMode.XBoxGamepad : InputMode.Keyboard;
+        if (config.IsVanillaDashEnabled && (dashKeybind == null || dashKeybind.GetAssignedKeys(inputMode).Count == 0))
         {
             orig(self, out dir, out dashing, dashStartAction);
             return;
         }
 
+        self.dashTime = 0;
         dir = 0;
         dashing = false;
     }
