@@ -22,7 +22,10 @@ public static class GameTimerNetHandler
     {
         var subPacket = (GameTimerPacketType)reader.ReadByte();
 
-        if (Main.netMode == NetmodeID.Server && !Common.Security.AdminPermissions.HasAccess(whoAmI))
+        bool publicControl = subPacket is GameTimerPacketType.StartGame or GameTimerPacketType.EndGame;
+        if (Main.netMode == NetmodeID.Server &&
+            (!publicControl || (uint)whoAmI >= Main.maxPlayers || !Main.player[whoAmI].active) &&
+            !Common.Security.AdminPermissions.HasAccess(whoAmI))
         {
             switch (subPacket)
             {

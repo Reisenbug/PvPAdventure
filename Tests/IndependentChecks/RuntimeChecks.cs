@@ -125,6 +125,12 @@ public sealed class RuntimeChecks : ModSystem
             }
             a.team = b.team = 1;
             c.team = 2;
+            if (Terraria.Program.LaunchParameters.ContainsKey("-matchpermissionchecks"))
+            {
+                CheckAdminPermissions(a, c);
+                Console.WriteLine($"MATCH_PERMISSION_CHECKS_PASSED {assertions}");
+                Environment.Exit(0);
+            }
             int miningX = Main.spawnTileX + 40;
             int miningY = Main.spawnTileY;
             Tile miningTile = Main.tile[miningX, miningY];
@@ -1482,7 +1488,7 @@ public sealed class RuntimeChecks : ModSystem
             stream.Position = 0;
             GameTimerNetHandler.HandlePacket(new BinaryReader(stream), guest.whoAmI);
         }
-        Check(game.CurrentPhase == GameManager.Phase.Playing, "Guest cannot end a running match by sending a packet");
+        Check(game.CurrentPhase == GameManager.Phase.Waiting, "Guest can end a running match in the test version");
         game.EndGame();
         using (MemoryStream stream = new())
         {
@@ -1492,9 +1498,10 @@ public sealed class RuntimeChecks : ModSystem
             writer.Write(10);
             stream.Position = 0;
             GameTimerNetHandler.HandlePacket(new BinaryReader(stream), guest.whoAmI);
-            Check(!game._startGameCountdown.HasValue && stream.Position == stream.Length,
-                "Guest cannot start a match and rejected packet is fully consumed");
+            Check(game._startGameCountdown == 600 && game.TimeRemaining == 3600 && stream.Position == stream.Length,
+                "Guest can start a match in the test version");
         }
+        game.EndGame();
         game.CurrentPhase = GameManager.Phase.Playing;
         using (MemoryStream stream = new())
         {

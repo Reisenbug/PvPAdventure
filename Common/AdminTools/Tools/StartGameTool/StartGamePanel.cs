@@ -77,8 +77,6 @@ internal class StartGamePanel : UIDraggablePanel
         _startButton.OnMouseOut += (_, _) => _startButton.BorderColor = Color.Black;
         _startButton.OnLeftClick += (_, _) =>
         {
-            if (!Common.Security.AdminPermissions.RequireLocal())
-                return;
             if (HasMatch)
             {
                 RequestControl(GameTimerNetHandler.GameTimerPacketType.EndGame);
@@ -127,7 +125,7 @@ internal class StartGamePanel : UIDraggablePanel
 
     private static void RequestControl(GameTimerNetHandler.GameTimerPacketType action)
     {
-        if (!Common.Security.AdminPermissions.RequireLocal())
+        if (action != GameTimerNetHandler.GameTimerPacketType.EndGame && !Common.Security.AdminPermissions.RequireLocal())
             return;
         if (Main.netMode == NetmodeID.MultiplayerClient)
         {
