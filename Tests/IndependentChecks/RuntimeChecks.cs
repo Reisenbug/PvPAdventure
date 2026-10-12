@@ -68,6 +68,33 @@ public sealed class RuntimeChecks : ModSystem
         ran = true;
         try
         {
+            if (Terraria.Program.LaunchParameters.ContainsKey("-bombflightchecks"))
+            {
+                foreach (string name in new[] { "PowerBombProjectile", "StickyPowerBombProjectile" })
+                {
+                    var projectile = new Projectile();
+                    projectile.SetDefaults(ModContent.Find<ModProjectile>("PvPAdventure/" + name).Type);
+                    projectile.velocity = new Vector2(6f, 0f);
+                    Vector2 referenceVelocity = projectile.velocity;
+                    Vector2 displacement = Vector2.Zero, referenceDisplacement = Vector2.Zero;
+                    for (int frame = 1; frame <= 60; frame++)
+                    {
+                        projectile.ModProjectile.AI();
+                        displacement += projectile.velocity;
+                        if (frame > 5)
+                        {
+                            if (referenceVelocity.Y == 0f) referenceVelocity.X *= 0.97f;
+                            referenceVelocity.Y += 0.2f;
+                        }
+                        referenceDisplacement += referenceVelocity;
+                    }
+                    Console.WriteLine($"BOMB_FLIGHT {name}: actual={displacement}, vanilla145={referenceDisplacement}, velocity={projectile.velocity}");
+                    if (!Terraria.Program.LaunchParameters.ContainsKey("-measureonly"))
+                        Check(Vector2.Distance(displacement, referenceDisplacement) < 0.01f,
+                            name + " matches vanilla 1.4.5 airborne trajectory");
+                }
+                Environment.Exit(0);
+            }
             if (Terraria.Program.LaunchParameters.ContainsKey("-randomteamchecks"))
             {
                 CheckRandomTeams();

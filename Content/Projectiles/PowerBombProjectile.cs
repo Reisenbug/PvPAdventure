@@ -42,9 +42,22 @@ internal class PowerBombProjectile : ModProjectile
         }
         else
         {
-            Projectile.velocity.Y += 0.2f;
-            Projectile.velocity.X *= 0.99f;
-            Projectile.rotation += Projectile.velocity.X * 0.05f;
+            Projectile.ai[1] += 1f;
+            if (Projectile.ai[1] > 5f)
+            {
+                Projectile.ai[1] = 10f;
+                if (Projectile.velocity.Y == 0f && Projectile.velocity.X != 0f)
+                {
+                    Projectile.velocity.X *= 0.97f;
+                    if (Projectile.velocity.X > -0.01f && Projectile.velocity.X < 0.01f)
+                    {
+                        Projectile.velocity.X = 0f;
+                        Projectile.netUpdate = true;
+                    }
+                }
+                Projectile.velocity.Y += 0.2f;
+            }
+            Projectile.rotation += Projectile.velocity.X * 0.1f;
         }
         if (!Main.dedServ && Main.rand.NextBool(3))
             Dust.NewDust(Projectile.position, Projectile.width, Projectile.height, DustID.Smoke);
