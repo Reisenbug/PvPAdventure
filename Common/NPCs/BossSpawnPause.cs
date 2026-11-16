@@ -19,10 +19,12 @@ public sealed class BossSpawnPause : GlobalNPC
     public bool IsPaused => remainingTicks > 0;
 
     public override bool AppliesToEntity(NPC entity, bool lateInstantiation) =>
-        entity.type is NPCID.SkeletronHead or NPCID.CultistBoss or NPCID.Plantera;
+        entity.type is NPCID.SkeletronHead or NPCID.CultistBoss or NPCID.Plantera or NPCID.WallofFlesh;
 
     public override void OnSpawn(NPC npc, IEntitySource source)
     {
+        if (npc.type == NPCID.WallofFlesh && Main.hardMode)
+            return;
         originalInvulnerability = npc.dontTakeDamage;
         remainingTicks = npc.type == NPCID.Plantera ? 1800 : 3600;
         npc.dontTakeDamage = true;

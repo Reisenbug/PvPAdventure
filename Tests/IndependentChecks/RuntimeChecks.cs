@@ -34,7 +34,7 @@ public sealed class ClientSlopeBootstrap : ModSystem
     }
 }
 
-public sealed class RuntimeChecks : ModSystem
+public sealed partial class RuntimeChecks : ModSystem
 {
     private delegate int TextOriginal(Rectangle location, Color color, int amount, bool dramatic, bool dot);
     private delegate int TextHook(TextOriginal original, Rectangle location, Color color, int amount, bool dramatic, bool dot);
@@ -125,6 +125,12 @@ public sealed class RuntimeChecks : ModSystem
             }
             a.team = b.team = 1;
             c.team = 2;
+            if (Terraria.Program.LaunchParameters.ContainsKey("-novemberchecks"))
+            {
+                CheckNovemberChanges(a);
+                Console.WriteLine($"NOVEMBER_CHECKS_PASSED {assertions}");
+                Environment.Exit(0);
+            }
             if (Terraria.Program.LaunchParameters.ContainsKey("-matchpermissionchecks"))
             {
                 CheckAdminPermissions(a, c);
