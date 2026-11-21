@@ -10,8 +10,8 @@ using PvPAdventure.Common.SpawnSelector;
 using PvPAdventure.Core.Config;
 using PvPAdventure.Core.Net;
 using Terraria;
+using Terraria.Audio;
 using Terraria.DataStructures;
-using Terraria.GameContent;
 using Terraria.GameInput;
 using Terraria.ID;
 using Terraria.Map;
@@ -22,13 +22,13 @@ namespace PvPAdventure.Common.Independent;
 
 public sealed class PortalCreatorItem : ModItem
 {
-    public override string Texture => $"Terraria/Images/Item_{ItemID.PortalGun}";
+    public override string Texture => "PvPAdventure/Assets/Portals/PortalCreator_NoTeam";
 
     public override void SetDefaults()
     {
         Item.width = 32;
         Item.height = 20;
-        Item.useStyle = ItemUseStyleID.Shoot;
+        Item.useStyle = ItemUseStyleID.HoldUp;
         Item.useTime = Item.useAnimation = 600;
         Item.channel = true;
         Item.noMelee = true;
@@ -43,6 +43,20 @@ public sealed class PortalCreatorItem : ModItem
         if (player.whoAmI == Main.myPlayer)
             PortalSystem.Request(0);
         return true;
+    }
+
+    public override bool PreDrawInInventory(SpriteBatch batch, Vector2 position, Rectangle frame, Color drawColor,
+        Color itemColor, Vector2 origin, float scale)
+    {
+        batch.Draw(PortalVisuals.Texture("PortalCreator", Main.LocalPlayer.team), position, null, drawColor,
+            0, origin, scale, SpriteEffects.None, 0);
+        return false;
+    }
+
+    public override void ModifyTooltips(List<TooltipLine> tooltips)
+    {
+        tooltips.Add(new TooltipLine(Mod, "PortalUse", "比赛中离开出生区，站稳并按住传送门快捷键或使用物品"));
+        tooltips.Add(new TooltipLine(Mod, "PortalCancel", "移动、受伤或松开按键会中断；同队可用，敌人可摧毁"));
     }
 }
 
@@ -83,13 +97,42 @@ public sealed class PortalSystem : ModSystem
             return;
         layers.Insert(index, new LegacyGameInterfaceLayer("PvPAdventure: Portal Creation", () =>
         {
-            int remaining = Main.LocalPlayer.GetModPlayer<PortalPlayer>().Remaining;
+            PortalPlayer state = Main.LocalPlayer.GetModPlayer<PortalPlayer>();
+            int remaining = state.Remaining;
             if (remaining > 0)
-                Utils.DrawBorderString(Main.spriteBatch, $"Creating portal: {(remaining + 59) / 60}s",
+            {
+                PortalVisuals.DrawBar(Main.spriteBatch, new Vector2(Main.screenWidth / 2f, Main.screenHeight - 72),
+                    state.Progress, Main.teamColor[Main.LocalPlayer.team]);
+                Utils.DrawBorderString(Main.spriteBatch, $"正在创建传送门：{(remaining + 59) / 60} 秒（移动、受伤或松键取消）",
                     new Vector2(Main.screenWidth / 2f, Main.screenHeight - 100), Color.White,
                     anchorx: 0.5f);
+            }
+            if (!Main.mapFullscreen && !Main.LocalPlayer.mouseInterface)
+                foreach (NPC npc in Main.ActiveNPCs)
+                    if (npc.ModNPC is TeamPortal portal && npc.Hitbox.Contains(Main.MouseWorld.ToPoint()))
+                    {
+                        string owner = Main.player[Math.Clamp((int)npc.ai[0], 0, Main.maxPlayers - 1)].name;
+                        Main.instance.MouseText($"{owner} 的传送门 · {npc.life}/{npc.lifeMax} · " +
+                            (portal.CanTravel(Main.LocalPlayer) ? "在传送入口打开地图使用" : "敌队传送门，可攻击摧毁"));
+                        break;
+                    }
             return true;
         }, InterfaceScaleType.UI));
+    }
+
+    public override void PostDrawTiles()
+    {
+        if (Main.dedServ || !Playing)
+            return;
+        Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState,
+            DepthStencilState.None, Main.Rasterizer, null, Main.GameViewMatrix.TransformationMatrix);
+        foreach (Player player in Main.ActivePlayers)
+        {
+            PortalPlayer state = player.GetModPlayer<PortalPlayer>();
+            if (state.Remaining > 0)
+                PortalVisuals.Draw(Main.spriteBatch, state.Origin, player.team, state.Progress);
+        }
+        Main.spriteBatch.End();
     }
 
     internal static void Request(byte action, int target = -1)
@@ -114,7 +157,16 @@ public sealed class PortalSystem : ModSystem
         {
             if (action == 3)
             {
-                PortalPlayer state = Main.LocalPlayer.GetModPlayer<PortalPlayer>();
+                int owner = reader.ReadByte();
+                Vector2 origin = new(reader.ReadSingle(), reader.ReadSingle());
+                int duration = reader.ReadInt32();
+                if (owner >= Main.maxPlayers)
+                    return;
+                PortalPlayer state = Main.player[owner].GetModPlayer<PortalPlayer>();
+                if (target > 0 && state.Remaining == 0)
+                    PortalVisuals.Burst(origin, Main.player[owner].team, inward: true);
+                state.Origin = origin;
+                state.CreationFrames = Math.Max(1, duration);
                 state.Remaining = Math.Max(0, target);
                 if (state.Remaining == 0)
                     state.Cancel();
@@ -143,6 +195,8 @@ public sealed class PortalSystem : ModSystem
         {
             state.Origin = player.Center;
             state.Remaining = Math.Max(1, ModContent.GetInstance<IndependentConfig>().PortalCreationSeconds * 60);
+            state.CreationFrames = state.Remaining;
+            PortalVisuals.Burst(state.Origin, player.team, inward: true);
             state.Notify();
         }
         else if (action == 2 && target >= 0 && target < Main.maxNPCs &&
@@ -221,6 +275,8 @@ public sealed class PortalSystem : ModSystem
 public sealed class PortalPlayer : ModPlayer
 {
     internal int Remaining;
+    internal int CreationFrames;
+    internal float Progress => MathHelper.Clamp(1f - Remaining / (float)Math.Max(1, CreationFrames), 0, 1);
     internal Vector2 Origin;
     internal int SpawnPortal = -1;
 
@@ -257,6 +313,7 @@ public sealed class PortalPlayer : ModPlayer
         }
         if (Remaining <= 0)
             return;
+        PortalVisuals.Ambient(Origin, Player.team, Progress);
         if (Main.netMode == NetmodeID.MultiplayerClient)
         {
             Remaining--;
@@ -265,7 +322,7 @@ public sealed class PortalPlayer : ModPlayer
                 Cancel();
                 PortalSystem.Request(1);
             }
-            else if (Remaining == 0)
+            else if (Remaining == 0 && Player.whoAmI == Main.myPlayer)
                 StopUse();
             return;
         }
@@ -318,6 +375,8 @@ public sealed class PortalPlayer : ModPlayer
 
     private void StopUse()
     {
+        if (Main.netMode == NetmodeID.MultiplayerClient && Player.whoAmI != Main.myPlayer)
+            return;
         if (Player.HeldItem.type != ModContent.ItemType<PortalCreatorItem>())
             return;
         Player.channel = false;
@@ -334,13 +393,18 @@ public sealed class PortalPlayer : ModPlayer
         packet.Write((byte)AdventurePacketIdentifier.Portal);
         packet.Write((byte)3);
         packet.Write(Remaining);
-        packet.Send(Player.whoAmI);
+        packet.Write((byte)Player.whoAmI);
+        packet.Write(Origin.X);
+        packet.Write(Origin.Y);
+        packet.Write(CreationFrames);
+        packet.Send();
     }
 }
 
 public sealed class TeamPortal : ModNPC
 {
-    public override string Texture => $"Terraria/Images/Item_{ItemID.PortalGun}";
+    public override string Texture => "PvPAdventure/Assets/Portals/Portal_NoTeam";
+    public override void SetStaticDefaults() => Main.npcFrameCount[Type] = PortalVisuals.FrameCount;
     public override void SetDefaults()
     {
         NPC.width = 32;
@@ -351,6 +415,7 @@ public sealed class TeamPortal : ModNPC
         NPC.knockBackResist = 0;
         NPC.damage = 0;
         NPC.aiStyle = -1;
+        NPC.ShowNameOnHover = false;
     }
 
     internal bool CanTravel(Player player) => NPC.active && NPC.life > 0 &&
@@ -367,6 +432,17 @@ public sealed class TeamPortal : ModNPC
     public override void AI()
     {
         NPC.velocity = Vector2.Zero;
+        if (!Main.dedServ)
+        {
+            if (NPC.localAI[0] == 0)
+            {
+                NPC.localAI[0] = 1;
+                PortalVisuals.Burst(NPC.Center, (int)NPC.ai[1]);
+                SoundEngine.PlaySound(SoundID.Item8, NPC.Center);
+            }
+            NPC.localAI[1] = Math.Max(0, NPC.localAI[1] - 1);
+            PortalVisuals.Ambient(NPC.Center, (int)NPC.ai[1]);
+        }
         int owner = (int)NPC.ai[0];
         if (Main.netMode != NetmodeID.MultiplayerClient &&
             (!PortalSystem.Playing || owner < 0 || owner >= Main.maxPlayers ||
@@ -380,15 +456,19 @@ public sealed class TeamPortal : ModNPC
 
     public override bool PreDraw(SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
     {
-        Color color = Main.teamColor[Math.Clamp((int)NPC.ai[1], 0, Main.teamColor.Length - 1)];
-        for (int i = 0; i < 24; i++)
-        {
-            float angle = MathHelper.TwoPi * i / 24;
-            Vector2 point = NPC.Center - screenPos + new Vector2((float)Math.Cos(angle) * 15, (float)Math.Sin(angle) * 24);
-            spriteBatch.Draw(TextureAssets.MagicPixel.Value, point, null, color,
-                angle, Vector2.Zero, new Vector2(3, 6), SpriteEffects.None, 0);
-        }
+        PortalVisuals.Draw(spriteBatch, NPC.Center, (int)NPC.ai[1], flash: NPC.localAI[1] / 12f);
+        PortalVisuals.DrawBar(spriteBatch, NPC.Center - screenPos + new Vector2(0, 28),
+            NPC.life / (float)NPC.lifeMax, Color.Lerp(Color.Red, Color.LimeGreen, NPC.life / (float)NPC.lifeMax));
         return false;
+    }
+
+    public override bool? DrawHealthBar(byte hbPosition, ref float scale, ref Vector2 position) => false;
+
+    public override void HitEffect(NPC.HitInfo hit)
+    {
+        NPC.localAI[1] = 12;
+        if (NPC.life <= 0)
+            PortalVisuals.Burst(NPC.Center, (int)NPC.ai[1]);
     }
 }
 
@@ -399,17 +479,17 @@ public sealed class PortalMapLayer : ModMapLayer
         if (!PortalSystem.Playing)
             return;
         Player player = Main.LocalPlayer;
-        Main.instance.LoadItem(ItemID.PortalGun);
         foreach (NPC npc in Main.ActiveNPCs)
         {
             if (npc.ModNPC is not TeamPortal portal || !portal.CanTravel(player))
                 continue;
-            var result = context.Draw(TextureAssets.Item[ItemID.PortalGun].Value, npc.Center / 16,
-                Main.teamColor[player.team], new SpriteFrame(1, 1), 1, 1.3f, Alignment.Center);
+            var result = context.Draw(PortalVisuals.Texture("PortalMinimap", (int)npc.ai[1]), npc.Center / 16,
+                Color.White, new SpriteFrame(1, 1), 1, 1.3f, Alignment.Center);
             if (!result.IsMouseOver)
                 continue;
-            text = player.dead ? "Select portal for next respawn" :
-                PortalSystem.CanTravelFrom(player) ? "Teleport to team portal" : "Travel from spawn, a bed, or a team portal";
+            string owner = Main.player[Math.Clamp((int)npc.ai[0], 0, Main.maxPlayers - 1)].name;
+            text = $"{owner} 的传送门 · {npc.life}/{npc.lifeMax} · " + (player.dead ? "点击选择复活目标" :
+                PortalSystem.CanTravelFrom(player) ? "点击传送" : "请从出生区、床或同队传送门旁使用");
             if (Main.mapFullscreen && Main.mouseLeft && Main.mouseLeftRelease &&
                 (player.dead || PortalSystem.CanTravelFrom(player)))
             {

@@ -125,6 +125,12 @@ public sealed partial class RuntimeChecks : ModSystem
             }
             a.team = b.team = 1;
             c.team = 2;
+            if (Terraria.Program.LaunchParameters.ContainsKey("-portalvisualchecks"))
+            {
+                CheckPortalVisuals(a, b);
+                Console.WriteLine($"PORTAL_VISUAL_CHECKS_PASSED {assertions}");
+                Environment.Exit(0);
+            }
             if (Terraria.Program.LaunchParameters.ContainsKey("-novemberchecks"))
             {
                 CheckNovemberChanges(a);
@@ -1172,6 +1178,10 @@ public sealed partial class RuntimeChecks : ModSystem
             using BinaryWriter writer = new(stream, System.Text.Encoding.UTF8, true);
             writer.Write((byte)3);
             writer.Write(0);
+            writer.Write((byte)player.whoAmI);
+            writer.Write(player.Center.X);
+            writer.Write(player.Center.Y);
+            writer.Write(600);
             stream.Position = 0;
             Call(typeof(PortalSystem), "Handle", null, new BinaryReader(stream), player.whoAmI);
         }
