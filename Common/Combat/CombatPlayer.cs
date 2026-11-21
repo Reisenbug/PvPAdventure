@@ -56,7 +56,6 @@ internal class CombatPlayer : ModPlayer
         // Forcibly treat deaths as non-PvP for coin drop logic.
         IL_Player.KillMe += EditPlayerKillMe;
 
-        // Always consider the respawn time for non-pvp deaths.
         On_Player.GetRespawnTime += OnPlayerGetRespawnTime;
         On_Player.Spawn += OnPlayerSpawn;
 
@@ -64,7 +63,19 @@ internal class CombatPlayer : ModPlayer
         IL_Player.WOFTongue += EditPlayerWOFTongue;
     }
 
-    private int OnPlayerGetRespawnTime(On_Player.orig_GetRespawnTime orig, Player self, bool pvp) => orig(self, false);
+    private int OnPlayerGetRespawnTime(On_Player.orig_GetRespawnTime orig, Player self, bool pvp)
+    {
+        if (Main.netMode != NetmodeID.SinglePlayer)
+        {
+            foreach (NPC npc in Main.ActiveNPCs)
+            {
+                if ((npc.boss || npc.type is NPCID.EaterofWorldsHead or NPCID.EaterofWorldsBody or NPCID.EaterofWorldsTail) &&
+                    Math.Abs(self.Center.X - npc.Center.X) + Math.Abs(self.Center.Y - npc.Center.Y) < 4000f)
+                    return 20 * 60;
+            }
+        }
+        return 10 * 60;
+    }
 
     private void OnPlayerSpawn(On_Player.orig_Spawn orig, Player self, PlayerSpawnContext context)
     {
