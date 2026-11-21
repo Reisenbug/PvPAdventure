@@ -50,8 +50,6 @@ internal class KeybindsPlayer : ModPlayer
 
         if (keybinds.StartGame.JustPressed)
         {
-            if (!Common.Security.AdminPermissions.RequireLocal())
-                return;
             var dialog = ModContent.GetInstance<StartGameSystem>();
             if (dialog.IsActive())
                 dialog.Hide();
