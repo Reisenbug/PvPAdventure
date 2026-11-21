@@ -125,6 +125,28 @@ public sealed partial class RuntimeChecks : ModSystem
             }
             a.team = b.team = 1;
             c.team = 2;
+            if (Terraria.Program.LaunchParameters.ContainsKey("-respawnchecks"))
+            {
+                Main.netMode = NetmodeID.Server;
+                Main.myPlayer = 255;
+                foreach (Player player in new[] { a, b })
+                {
+                    player.buffType = new int[Player.MaxBuffs];
+                    player.buffTime = new int[Player.MaxBuffs];
+                    player.buffImmune = new bool[BuffLoader.BuffCount];
+                }
+                foreach (NPC npc in Main.ActiveNPCs) npc.active = false;
+                a.KillMe(Terraria.DataStructures.PlayerDeathReason.ByOther(0), 10000, 0);
+                Check(a.dead && a.respawnTimer == 600, $"Fall death timer: {a.respawnTimer}");
+                var boss = Main.npc[0];
+                boss.SetDefaults(NPCID.EyeofCthulhu);
+                boss.active = true;
+                boss.Center = b.Center;
+                b.KillMe(Terraria.DataStructures.PlayerDeathReason.ByOther(0), 10000, 0);
+                Check(b.dead && b.respawnTimer == 1200, $"Fall death near boss timer: {b.respawnTimer}");
+                Console.WriteLine($"RESPAWN_CHECKS_PASSED {assertions}");
+                Environment.Exit(0);
+            }
             if (Terraria.Program.LaunchParameters.ContainsKey("-portalvisualchecks"))
             {
                 CheckPortalVisuals(a, b);
