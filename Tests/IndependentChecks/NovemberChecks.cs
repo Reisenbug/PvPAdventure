@@ -18,6 +18,7 @@ public sealed partial class RuntimeChecks
     {
         CheckMatchPoints();
         CheckScheduledWallOfFlesh();
+        CheckBossDisengagement(player);
         var globals = Main.ItemDropsDB.GetRulesForNPCID(NPCID.BlueSlime, true).OfType<CommonDrop>().ToArray();
         foreach (int soul in new[] { ItemID.SoulofLight, ItemID.SoulofNight })
         {
@@ -124,6 +125,58 @@ public sealed partial class RuntimeChecks
             TileID.Sets.PreventsTileHammeringIfOnTopOfIt[TileID.LihzahrdAltar], "Altar protects supporting tiles");
         Check(altar.CanKillTile(0, 0, TileID.Stone, ref blocked) && altar.CanExplode(0, 0, TileID.Stone),
             "Altar protection leaves ordinary blocks unchanged");
+    }
+
+    private void CheckBossDisengagement(Player player)
+    {
+        var positions = Main.player.Select(p => p.Center).ToArray();
+        bool wasDay = Main.dayTime;
+        double time = Main.time;
+        try
+        {
+            Main.dayTime = false;
+            foreach (Player activePlayer in Main.ActivePlayers)
+                activePlayer.Center = new Vector2(1000);
+
+            var wall = new NPC { active = true };
+            wall.SetDefaults(NPCID.WallofFlesh);
+            wall.Center = new Vector2(10000);
+            var wallBehavior = wall.GetGlobalNPC<BossDespawnRework>();
+            Check(!wallBehavior.CheckActive(wall) && !wallBehavior.PreAI(wall) && wall.velocity == Vector2.Zero,
+                "Unattended Wall of Flesh stays in place");
+
+            var plant = new NPC { active = true };
+            plant.SetDefaults(NPCID.Plantera);
+            plant.Center = new Vector2(10000);
+            var plantBehavior = plant.GetGlobalNPC<BossDespawnRework>();
+            plantBehavior.PreAI(plant);
+            plant.Center += new Vector2(200, 0);
+            Check(!plantBehavior.PreAI(plant) && plant.velocity == new Vector2(-12, 0),
+                "Unattended Plantera moves toward its spawn at 12 pixels per frame");
+            player.Center = plant.Center;
+            Check(plantBehavior.PreAI(plant) && plant.timeLeft == 3600,
+                "Nearby player re-engages Plantera");
+
+            var prime = new NPC();
+            prime.SetDefaults(NPCID.SkeletronPrime);
+            prime.active = true;
+            var mechBehavior = prime.GetGlobalNPC<BossDespawnRework>();
+            Main.dayTime = true;
+            Main.time = 599;
+            mechBehavior.PreAI(prime);
+            Check(prime.active, "Mechanical boss remains before the dawn cutoff");
+            Main.time = 600;
+            mechBehavior.PreAI(prime);
+            mechBehavior.PostAI(prime);
+            Check(!prime.active, "Mechanical boss disappears at the dawn cutoff");
+        }
+        finally
+        {
+            for (int i = 0; i < positions.Length; i++)
+                Main.player[i].Center = positions[i];
+            Main.dayTime = wasDay;
+            Main.time = time;
+        }
     }
 
     private void CheckScheduledWallOfFlesh()
