@@ -225,6 +225,14 @@ public class PointsManager : ModSystem
         if (Main.netMode == NetmodeID.MultiplayerClient || team == Team.None || !_points.ContainsKey(team))
             return;
 
+        bool isTwin = npc.type is NPCID.Retinazer or NPCID.Spazmatism;
+        if (isTwin)
+        {
+            int otherTwin = npc.type == NPCID.Retinazer ? NPCID.Spazmatism : NPCID.Retinazer;
+            if (NPC.AnyNPCs(otherTwin))
+                return;
+        }
+
         var config = ModContent.GetInstance<ServerConfig>();
 
         // Is this NPC assigned custom point values?
@@ -262,7 +270,7 @@ public class PointsManager : ModSystem
 
         string fullName;
 
-        if (npc.type == NPCID.Retinazer || npc.type == NPCID.Spazmatism)
+        if (isTwin)
         {
             _downedNpcs[team].Add(NPCID.Spazmatism);
             _downedNpcs[team].Add(NPCID.Retinazer);

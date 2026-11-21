@@ -227,6 +227,25 @@ public sealed partial class RuntimeChecks
                 "Both teams start with four points");
 
             var boss = new NPC();
+            int twinSlot = Array.FindIndex(Main.npc, npc => !npc.active);
+            NPC savedNpc = Main.npc[twinSlot];
+            var survivingTwin = new NPC();
+            survivingTwin.SetDefaults(NPCID.Spazmatism);
+            survivingTwin.active = true;
+            survivingTwin.life = 1;
+            try
+            {
+                Main.npc[twinSlot] = survivingTwin;
+                boss.SetDefaults(NPCID.Retinazer);
+                points.AwardNpcKillToTeam(Team.Red, boss);
+                Check(points.Points[Team.Red] == 4 && !points.DownedNpcs[Team.Red].Contains(NPCID.Retinazer),
+                    "One dead eye does not award or claim the Twins first kill");
+            }
+            finally
+            {
+                Main.npc[twinSlot] = savedNpc;
+            }
+
             foreach (int type in new[] { NPCID.SkeletronHead, NPCID.WallofFlesh, NPCID.TheDestroyer,
                          NPCID.Retinazer, NPCID.Spazmatism, NPCID.SkeletronPrime, NPCID.EyeofCthulhu })
             {
