@@ -12,7 +12,7 @@ namespace PvPAdventure.Common.NPCs;
 /// <summary>
 /// - Automatically spawns an undefeated mechanical boss at night <br/>
 /// - Shows vanilla-style warning messages before spawning <br/>
-/// - Spawns at the dungeon entrance when a living surface player is available <br/>
+/// - Spawns at the dungeon entrance <br/>
 /// - Prevents duplicate spawns in the same night <br/>
 /// </summary>
 public class MechBossSpawnSystem : ModSystem
@@ -58,15 +58,12 @@ public class MechBossSpawnSystem : ModSystem
             }
         }
 
-        if (Main.time >= 3600 && hasAnnouncedTonight && !hasSpawnedTonight)
+        if (Main.time >= 3600 && Main.time < 3700 && hasAnnouncedTonight && !hasSpawnedTonight)
         {
             if (selectedBoss != -1)
             {
-                if (HasSurfacePlayer())
-                {
-                    SpawnMechanicalBoss(selectedBoss);
-                    hasSpawnedTonight = true;
-                }
+                SpawnMechanicalBoss(selectedBoss);
+                hasSpawnedTonight = true;
             }
         }
     }
@@ -79,7 +76,8 @@ public class MechBossSpawnSystem : ModSystem
                !NPC.AnyNPCs(NPCID.Retinazer) &&
                !NPC.AnyNPCs(NPCID.Spazmatism) &&
                !NPC.AnyNPCs(NPCID.SkeletronPrime) &&
-               HasUndefeatedMechBoss();
+               HasUndefeatedMechBoss() &&
+               AnyValidPlayer();
     }
 
     private bool HasUndefeatedMechBoss()
@@ -87,12 +85,12 @@ public class MechBossSpawnSystem : ModSystem
         return !NPC.downedMechBoss1 || !NPC.downedMechBoss2 || !NPC.downedMechBoss3;
     }
 
-    private bool HasSurfacePlayer()
+    private bool AnyValidPlayer()
     {
         for (int i = 0; i < Main.maxPlayers; i++)
         {
             Player player = Main.player[i];
-            if (player.active && !player.dead && !player.ghost && player.ZoneOverworldHeight)
+            if (player.active && !player.dead)
                 return true;
         }
         return false;

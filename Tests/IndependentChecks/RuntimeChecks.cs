@@ -427,7 +427,7 @@ public sealed partial class RuntimeChecks : ModSystem
                 Main.netMode = NetmodeID.MultiplayerClient;
                 for (int i = 0; i < 10; i++) Check(!pause.PreAI(npc), $"Client does not finish boss {type} spawn wait");
                 Main.netMode = NetmodeID.SinglePlayer;
-                int duration = type == NPCID.Plantera ? 1800 : 3600;
+                const int duration = 3600;
                 for (int i = 0; i < duration - 1; i++) pause.PreAI(npc);
                 Check(pause.IsPaused && npc.dontTakeDamage, $"Boss {type} remains paused until duration ends");
                 using var stream = new MemoryStream();

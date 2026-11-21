@@ -390,13 +390,13 @@ public class ServerConfig : ModConfig
 
     public class WorldGenerationConfig
     {
-        [DefaultValue(2)] public int LifeFruitChanceDenominator { get; set; } = 2;
+        [DefaultValue(1)] public int LifeFruitChanceDenominator { get; set; } = 1;
 
-        [DefaultValue(2)] public int LifeFruitExpertChanceDenominator { get; set; } = 2;
+        [DefaultValue(1)] public int LifeFruitExpertChanceDenominator { get; set; } = 1;
 
-        [DefaultValue(2)] public int LifeFruitMinimumDistanceBetween { get; set; } = 2;
+        [DefaultValue(1)] public int LifeFruitMinimumDistanceBetween { get; set; } = 1;
 
-        [DefaultValue(30)] public int PlanteraBulbChanceDenominator { get; set; } = 30;
+        [DefaultValue(12)] public int PlanteraBulbChanceDenominator { get; set; } = 12;
 
         [DefaultValue(8)] public int ChlorophyteSpreadChanceModifier { get; set; } = 8;
 

@@ -46,7 +46,9 @@ public class PointsManager : ModSystem
         }
     }
 
-    public override void ClearWorld()
+    public override void ClearWorld() => ResetForMatch();
+
+    public void ResetForMatch()
     {
         _points.Clear();
         _downedNpcs.Clear();
@@ -220,6 +222,9 @@ public class PointsManager : ModSystem
 
     public void AwardNpcKillToTeam(Team team, NPC npc)
     {
+        if (Main.netMode == NetmodeID.MultiplayerClient || team == Team.None || !_points.ContainsKey(team))
+            return;
+
         var config = ModContent.GetInstance<ServerConfig>();
 
         // Is this NPC assigned custom point values?
@@ -282,7 +287,9 @@ public class PointsManager : ModSystem
         var killerTeam = (Team)killer.team;
 
         // Even if certain oddities allowed this to happen, no point exchanging would actually occur.
-        if (killerTeam == (Team)victim.team)
+        if (Main.netMode == NetmodeID.MultiplayerClient || killerTeam == Team.None ||
+            victim.team == (int)Team.None || killerTeam == (Team)victim.team ||
+            !_points.ContainsKey(killerTeam) || !_points.ContainsKey((Team)victim.team))
             return;
 
         var victimTeamPoints = _points[(Team)victim.team];

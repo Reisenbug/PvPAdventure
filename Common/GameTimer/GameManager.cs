@@ -364,7 +364,12 @@ public class GameManager : ModSystem
         if (oldPhase == Phase.Playing && newPhase == Phase.Waiting)
             ModContent.GetInstance<global::PvPAdventure.Common.Independent.LocalMatchSystem>().End("MatchEnded");
         if (oldPhase != Phase.Playing && newPhase == Phase.Playing)
+        {
+            var points = ModContent.GetInstance<PointsManager>();
+            points.ResetForMatch();
+            points.UiScoreboard?.Invalidate();
             ModContent.GetInstance<global::PvPAdventure.Common.Independent.LocalMatchSystem>().Begin();
+        }
         Log.Chat("New GamePhase: " + newPhase + ", (old: " + oldPhase + ")");
 
         // Only save when a real match ends (Playing → Waiting transition)

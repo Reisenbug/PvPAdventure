@@ -2,7 +2,10 @@ using System;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using PvPAdventure.Common.NPCs;
+using PvPAdventure.Common.Statistics;
+using PvPAdventure.Core.Config;
 using Terraria;
+using Terraria.Enums;
 using Terraria.GameContent.ItemDropRules;
 using Terraria.ID;
 using Terraria.ModLoader;
@@ -13,6 +16,8 @@ public sealed partial class RuntimeChecks
 {
     private void CheckNovemberChanges(Player player)
     {
+        CheckMatchPoints();
+        CheckScheduledWallOfFlesh();
         var globals = Main.ItemDropsDB.GetRulesForNPCID(NPCID.BlueSlime, true).OfType<CommonDrop>().ToArray();
         foreach (int soul in new[] { ItemID.SoulofLight, ItemID.SoulofNight })
         {
@@ -54,9 +59,7 @@ public sealed partial class RuntimeChecks
         Check((bool)announced.GetValue(mech), "Mech warning does not require a surface player");
         Main.time = 3600;
         mech.PostUpdateWorld();
-        Check(!NPC.AnyNPCs(NPCID.SkeletronPrime), "Mech waits for a living surface player");
-        player.ZoneOverworldHeight = true;
-        mech.PostUpdateWorld();
+        Check(NPC.AnyNPCs(NPCID.SkeletronPrime), "Mech spawns even when the living players are underground");
         var prime = Main.npc.Single(npc => npc.active && npc.type == NPCID.SkeletronPrime);
         Check(Math.Abs(prime.Center.X - (Main.dungeonX * 16 + 8)) < 1 &&
             Math.Abs(prime.Bottom.Y - (Main.dungeonY * 16 - 160)) < 1, "Mech spawns at dungeon entrance, not player");
@@ -72,6 +75,7 @@ public sealed partial class RuntimeChecks
 
         var medallion = ModContent.GetInstance<PvPAdventure.Common.Items.PumpkinMoonMedallion>();
         var item = new Item(ItemID.PumpkinMoonMedallion);
+        player.ZoneOverworldHeight = true;
         player.ZoneDesert = false;
         player.ZonePurity = true;
         Check(player.ZoneForest && medallion.CanUseItem(item, player), "Medallion accepts night surface forest");
@@ -120,5 +124,81 @@ public sealed partial class RuntimeChecks
             TileID.Sets.PreventsTileHammeringIfOnTopOfIt[TileID.LihzahrdAltar], "Altar protects supporting tiles");
         Check(altar.CanKillTile(0, 0, TileID.Stone, ref blocked) && altar.CanExplode(0, 0, TileID.Stone),
             "Altar protection leaves ordinary blocks unchanged");
+    }
+
+    private void CheckScheduledWallOfFlesh()
+    {
+        var progression = ModContent.Find<ModSystem>("PvPAdventure/BespokeProgression");
+        bool wasDay = Main.dayTime;
+        bool wasHardMode = Main.hardMode;
+        try
+        {
+            progression.ClearWorld();
+            Main.hardMode = false;
+            Main.dayTime = true;
+            progression.PostUpdateWorld();
+            Main.dayTime = false;
+            progression.PostUpdateWorld();
+            Check(!NPC.AnyNPCs(NPCID.WallofFlesh), "No automatic Wall of Flesh on the first night");
+            Main.dayTime = true;
+            progression.PostUpdateWorld();
+            Main.dayTime = false;
+            progression.PostUpdateWorld();
+            Check(Main.npc.Count(npc => npc.active && npc.type == NPCID.WallofFlesh) == 1,
+                "Wall of Flesh spawns on the second night");
+            progression.PostUpdateWorld();
+            Check(Main.npc.Count(npc => npc.active && npc.type == NPCID.WallofFlesh) == 1,
+                "Scheduled Wall of Flesh only spawns once");
+        }
+        finally
+        {
+            foreach (NPC npc in Main.ActiveNPCs)
+                if (npc.type == NPCID.WallofFlesh)
+                    npc.active = false;
+            Main.dayTime = wasDay;
+            Main.hardMode = wasHardMode;
+            progression.ClearWorld();
+        }
+    }
+
+    private void CheckMatchPoints()
+    {
+        var config = ModContent.GetInstance<ServerConfig>();
+        var original = config.Points;
+        try
+        {
+            config.Points = new ServerConfig.PointsConfig();
+            var points = ModContent.GetInstance<PointsManager>();
+            points.ResetForMatch();
+            Check(points.Points[Team.Red] == 12 && points.Points[Team.Blue] == 12,
+                "Both teams start with 12 points");
+
+            var boss = new NPC();
+            boss.SetDefaults(NPCID.SkeletronHead);
+            points.AwardNpcKillToTeam(Team.Red, boss);
+            points.AwardNpcKillToTeam(Team.Red, boss);
+            points.AwardNpcKillToTeam(Team.Blue, boss);
+            Check(points.Points[Team.Red] == 14 && points.Points[Team.Blue] == 13,
+                "First boss kill gives two points, a different team's first kill gives one, repeats give zero");
+
+            boss.SetDefaults(NPCID.Plantera);
+            points.AwardNpcKillToTeam(Team.Red, boss);
+            points.AwardNpcKillToTeam(Team.Red, boss);
+            boss.SetDefaults(NPCID.CultistBoss);
+            points.AwardNpcKillToTeam(Team.Red, boss);
+            points.AwardNpcKillToTeam(Team.Red, boss);
+            points.AwardNpcKillToTeam(Team.None, boss);
+            Check(points.Points[Team.Red] == 40 && points.Points[Team.None] == 0,
+                "Plantera and Cultist can score again, while unassigned players never score");
+
+            points.ResetForMatch();
+            Check(points.Points[Team.Red] == 12 && points.DownedNpcs[Team.Red].Count == 0,
+                "A new match resets the score and first-kill history");
+        }
+        finally
+        {
+            config.Points = original;
+            ModContent.GetInstance<PointsManager>().ResetForMatch();
+        }
     }
 }

@@ -26,7 +26,7 @@ public sealed class BossSpawnPause : GlobalNPC
         if (npc.type == NPCID.WallofFlesh && Main.hardMode)
             return;
         originalInvulnerability = npc.dontTakeDamage;
-        remainingTicks = npc.type == NPCID.Plantera ? 1800 : 3600;
+        remainingTicks = 3600;
         npc.dontTakeDamage = true;
         npc.velocity = Vector2.Zero;
         npc.netUpdate = true;
