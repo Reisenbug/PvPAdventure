@@ -148,7 +148,11 @@ public class ServerConfig : ModConfig
         // Points per boss
         [Expand(false, false)]
         [CustomModConfigItem(typeof(DefinitionDictionaryElement))]
-        public Dictionary<NPCDefinition, NpcPoints> Npc { get; set; } = [];
+        public Dictionary<NPCDefinition, NpcPoints> Npc { get; set; } = new()
+        {
+            [new(NPCID.CultistBoss)] = new() { First = 10, Additional = 10, Repeatable = true },
+            [new(NPCID.Plantera)] = new() { First = 3, Additional = 3, Repeatable = true }
+        };
 
         [Expand(false, false)]
         public NpcPoints Boss { get; set; } = new()
@@ -166,8 +170,8 @@ public class ServerConfig : ModConfig
             public bool Repeatable { get; set; }
         }
 
-        [DefaultValue(5)]
-        public int TeamStartingPoints { get; set; } = 5;
+        [DefaultValue(12)]
+        public int TeamStartingPoints { get; set; } = 12;
     }
     
     public class BountiesConfig
