@@ -125,8 +125,6 @@ internal class StartGamePanel : UIDraggablePanel
 
     private static void RequestControl(GameTimerNetHandler.GameTimerPacketType action)
     {
-        if (action != GameTimerNetHandler.GameTimerPacketType.EndGame && !Common.Security.AdminPermissions.RequireLocal())
-            return;
         if (Main.netMode == NetmodeID.MultiplayerClient)
         {
             var packet = ModContent.GetInstance<PvPAdventure>().GetPacket();

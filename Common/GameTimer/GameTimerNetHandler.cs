@@ -22,7 +22,8 @@ public static class GameTimerNetHandler
     {
         var subPacket = (GameTimerPacketType)reader.ReadByte();
 
-        bool publicControl = subPacket is GameTimerPacketType.StartGame or GameTimerPacketType.EndGame;
+        bool publicControl = subPacket is GameTimerPacketType.StartGame or GameTimerPacketType.PauseGame or
+            GameTimerPacketType.EndGame;
         if (Main.netMode == NetmodeID.Server &&
             (!publicControl || (uint)whoAmI >= Main.maxPlayers || !Main.player[whoAmI].active) &&
             !Common.Security.AdminPermissions.HasAccess(whoAmI))
@@ -53,8 +54,9 @@ public static class GameTimerNetHandler
                         return;
                     }
 
-                    var pm = ModContent.GetInstance<PauseManager>();
-                    pm.TogglePause();
+                    var game = ModContent.GetInstance<GameManager>();
+                    if (game.CurrentPhase == GameManager.Phase.Playing || game._startGameCountdown.HasValue)
+                        ModContent.GetInstance<PauseManager>().TogglePause();
 
                     return;
                 }

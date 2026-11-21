@@ -2,8 +2,10 @@ using System.IO;
 using Microsoft.Xna.Framework;
 using PvPAdventure.Common.GameTimer;
 using Terraria;
+using Terraria.Chat;
 using Terraria.DataStructures;
 using Terraria.ID;
+using Terraria.Localization;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
 
@@ -31,6 +33,7 @@ public sealed class BossSpawnPause : GlobalNPC
         npc.dontTakeDamage = true;
         npc.velocity = Vector2.Zero;
         npc.netUpdate = true;
+        AnnounceCountdown(npc);
     }
 
     public override bool PreAI(NPC npc)
@@ -41,13 +44,32 @@ public sealed class BossSpawnPause : GlobalNPC
         npc.velocity = Vector2.Zero;
         npc.dontTakeDamage = true;
         if (remainingTicks > 0 && Main.netMode != NetmodeID.MultiplayerClient && !Main.gamePaused &&
-            !ModContent.GetInstance<PauseManager>().IsPaused && --remainingTicks == 0 && !outsideCombatRange)
+            !ModContent.GetInstance<PauseManager>().IsPaused)
         {
-            npc.dontTakeDamage = originalInvulnerability;
-            npc.netUpdate = true;
-            return true;
+            remainingTicks--;
+            AnnounceCountdown(npc);
+            if (remainingTicks == 0 && !outsideCombatRange)
+            {
+                npc.dontTakeDamage = originalInvulnerability;
+                npc.netUpdate = true;
+                return true;
+            }
         }
         return false;
+    }
+
+    private void AnnounceCountdown(NPC npc)
+    {
+        if (Main.netMode == NetmodeID.MultiplayerClient || npc.type is not (NPCID.WallofFlesh or NPCID.SkeletronHead) ||
+            remainingTicks is not (3600 or 1800 or 600 or 300 or 240 or 180 or 120 or 60))
+            return;
+
+        var message = NetworkText.FromFormattable("{0}将在 {1} 秒后可被攻击。",
+            Lang.GetNPCName(npc.type).ToNetworkText(), remainingTicks / 60);
+        if (Main.netMode == NetmodeID.Server)
+            ChatHelper.BroadcastChatMessage(message, Color.Gold);
+        else
+            Main.NewText(message.ToString(), Color.Gold);
     }
 
     internal void SetOutsideCombatRange(NPC npc, bool outside)

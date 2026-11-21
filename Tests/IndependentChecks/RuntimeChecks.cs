@@ -1548,7 +1548,8 @@ public sealed partial class RuntimeChecks : ModSystem
             stream.Position = 0;
             GameTimerNetHandler.HandlePacket(new BinaryReader(stream), guest.whoAmI);
         }
-        Check(!ModContent.GetInstance<PauseManager>().IsPaused, "Guest cannot pause a match");
+        Check(ModContent.GetInstance<PauseManager>().IsPaused, "Guest can pause a match in the test version");
+        ModContent.GetInstance<PauseManager>().Resume();
         int timeBefore = game.TimeRemaining;
         using (MemoryStream stream = new())
         {

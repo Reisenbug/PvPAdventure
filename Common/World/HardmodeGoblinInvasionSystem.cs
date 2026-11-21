@@ -1,6 +1,9 @@
+using Microsoft.Xna.Framework;
 using PvPAdventure.Common.GameTimer;
 using Terraria;
+using Terraria.Chat;
 using Terraria.ID;
+using Terraria.Localization;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
 
@@ -38,11 +41,17 @@ public class HardmodeGoblinInvasionSystem : ModSystem
             wasDaytime = Main.dayTime;
         }
 
-        if (remainingDawns > 0 && Main.dayTime && !wasDaytime)
-            remainingDawns--;
-
         if (NPC.downedGoblins)
             remainingDawns = -1;
+
+        if (remainingDawns > 0 && Main.dayTime && !wasDaytime && --remainingDawns == 1)
+        {
+            const string forecast = "预告：明天黎明将尝试触发哥布林入侵。";
+            if (Main.netMode == NetmodeID.Server)
+                ChatHelper.BroadcastChatMessage(NetworkText.FromLiteral(forecast), Color.Gold);
+            else
+                Main.NewText(forecast, Color.Gold);
+        }
 
         if (remainingDawns == 0 && Main.invasionType == 0)
         {

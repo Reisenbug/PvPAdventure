@@ -61,7 +61,7 @@ public class GameManager : ModSystem
                     if (Main.netMode == NetmodeID.MultiplayerClient)
                         break;
 
-                    if (_startGameCountdown.HasValue)
+                    if (_startGameCountdown.HasValue && !ModContent.GetInstance<PauseManager>().IsPaused)
                     {
                         _startGameCountdown--;
 

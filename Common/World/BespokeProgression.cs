@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using PvPAdventure.Common.GameTimer;
 using Terraria;
 using Terraria.Chat;
 using Terraria.ID;
@@ -67,7 +68,8 @@ namespace PvPAdventure.Common.World
 
         public override void PostUpdateWorld()
         {
-            if (Main.netMode == NetmodeID.MultiplayerClient)
+            if (Main.netMode == NetmodeID.MultiplayerClient || Main.gamePaused ||
+                ModContent.GetInstance<PauseManager>().IsPaused)
                 return;
 
             bool isDawn = false;
@@ -85,21 +87,30 @@ namespace PvPAdventure.Common.World
 
         private void CheckScheduledEvents(bool isDawn)
         {
+            if (isDawn && _nightsStarted == 1 && !_wofDone && !Main.hardMode &&
+                !NPC.AnyNPCs(NPCID.WallofFlesh))
+                BroadcastMessage("预告：今晚 19:30，血肉墙将在地狱西侧出现。", Color.Gold);
+
             if (!_wofDone && _nightsStarted >= 2)
                 _wofDone = SpawnWallOfFlesh();
 
-            Advance(ref _golemStage, NPC.downedPlantBoss, isDawn, SpawnGolem);
+            Advance(ref _golemStage, NPC.downedPlantBoss, isDawn, SpawnGolem,
+                "预告：明天黎明，石巨人将在丛林神庙祭坛出现。");
 
             bool allMechsDown = NPC.downedMechBoss1 && NPC.downedMechBoss2 && NPC.downedMechBoss3;
-            Advance(ref _planteraStage, allMechsDown, isDawn, SpawnPlantera);
+            Advance(ref _planteraStage, allMechsDown, isDawn, SpawnPlantera,
+                "预告：明天黎明，世纪之花将在地下丛林出现。");
         }
 
-        private static void Advance(ref Stage stage, bool trigger, bool isDawn, Func<bool> spawn)
+        private static void Advance(ref Stage stage, bool trigger, bool isDawn, Func<bool> spawn, string forecast)
         {
             if (stage == Stage.Waiting && trigger)
                 stage = Stage.Queued;
             else if (stage == Stage.Queued && isDawn)
+            {
                 stage = Stage.Armed;
+                BroadcastMessage(forecast, Color.Gold);
+            }
             else if (stage == Stage.Armed && isDawn)
                 stage = Stage.Due;
 
