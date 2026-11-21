@@ -170,16 +170,20 @@ public sealed partial class RuntimeChecks
             config.Points = new ServerConfig.PointsConfig();
             var points = ModContent.GetInstance<PointsManager>();
             points.ResetForMatch();
-            Check(points.Points[Team.Red] == 12 && points.Points[Team.Blue] == 12,
-                "Both teams start with 12 points");
+            Check(points.Points[Team.Red] == 4 && points.Points[Team.Blue] == 4,
+                "Both teams start with four points");
 
             var boss = new NPC();
-            boss.SetDefaults(NPCID.SkeletronHead);
-            points.AwardNpcKillToTeam(Team.Red, boss);
-            points.AwardNpcKillToTeam(Team.Red, boss);
-            points.AwardNpcKillToTeam(Team.Blue, boss);
-            Check(points.Points[Team.Red] == 14 && points.Points[Team.Blue] == 13,
-                "First boss kill gives two points, a different team's first kill gives one, repeats give zero");
+            foreach (int type in new[] { NPCID.SkeletronHead, NPCID.WallofFlesh, NPCID.TheDestroyer,
+                         NPCID.Retinazer, NPCID.Spazmatism, NPCID.SkeletronPrime, NPCID.EyeofCthulhu })
+            {
+                boss.SetDefaults(type);
+                points.AwardNpcKillToTeam(Team.Red, boss);
+                points.AwardNpcKillToTeam(Team.Red, boss);
+                points.AwardNpcKillToTeam(Team.Blue, boss);
+            }
+            Check(points.Points[Team.Red] == 19 && points.Points[Team.Blue] == 19,
+                "Both teams get full first-kill points, the Twins count once, and other bosses give zero");
 
             boss.SetDefaults(NPCID.Plantera);
             points.AwardNpcKillToTeam(Team.Red, boss);
@@ -188,11 +192,11 @@ public sealed partial class RuntimeChecks
             points.AwardNpcKillToTeam(Team.Red, boss);
             points.AwardNpcKillToTeam(Team.Red, boss);
             points.AwardNpcKillToTeam(Team.None, boss);
-            Check(points.Points[Team.Red] == 40 && points.Points[Team.None] == 0,
+            Check(points.Points[Team.Red] == 45 && points.Points[Team.None] == 0,
                 "Plantera and Cultist can score again, while unassigned players never score");
 
             points.ResetForMatch();
-            Check(points.Points[Team.Red] == 12 && points.DownedNpcs[Team.Red].Count == 0,
+            Check(points.Points[Team.Red] == 4 && points.DownedNpcs[Team.Red].Count == 0,
                 "A new match resets the score and first-kill history");
         }
         finally

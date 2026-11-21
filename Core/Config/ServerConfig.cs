@@ -150,16 +150,18 @@ public class ServerConfig : ModConfig
         [CustomModConfigItem(typeof(DefinitionDictionaryElement))]
         public Dictionary<NPCDefinition, NpcPoints> Npc { get; set; } = new()
         {
+            [new(NPCID.SkeletronHead)] = new() { First = 5, Additional = 5 },
+            [new(NPCID.WallofFlesh)] = new() { First = 4, Additional = 4 },
+            [new(NPCID.TheDestroyer)] = new() { First = 2, Additional = 2 },
+            [new(NPCID.Retinazer)] = new() { First = 2, Additional = 2 },
+            [new(NPCID.Spazmatism)] = new() { First = 2, Additional = 2 },
+            [new(NPCID.SkeletronPrime)] = new() { First = 2, Additional = 2 },
             [new(NPCID.CultistBoss)] = new() { First = 10, Additional = 10, Repeatable = true },
             [new(NPCID.Plantera)] = new() { First = 3, Additional = 3, Repeatable = true }
         };
 
         [Expand(false, false)]
-        public NpcPoints Boss { get; set; } = new()
-        {
-            First = 2,
-            Additional = 1
-        };
+        public NpcPoints Boss { get; set; } = new();
 
         public int PlayerKill { get; set; } = 1;
 
@@ -170,8 +172,8 @@ public class ServerConfig : ModConfig
             public bool Repeatable { get; set; }
         }
 
-        [DefaultValue(12)]
-        public int TeamStartingPoints { get; set; } = 12;
+        [DefaultValue(4)]
+        public int TeamStartingPoints { get; set; } = 4;
     }
     
     public class BountiesConfig

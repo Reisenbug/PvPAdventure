@@ -273,7 +273,8 @@ public class PointsManager : ModSystem
             fullName = npc.FullName;
         }
 
-        VisualizePointChange(pointsToAward, team, npc.position, $"[c/F58522:{fullName}]");
+        if (pointsToAward != 0)
+            VisualizePointChange(pointsToAward, team, npc.position, $"[c/F58522:{fullName}]");
 
         if (Main.dedServ)
             NetMessage.SendData(MessageID.WorldData);
