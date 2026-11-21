@@ -60,11 +60,11 @@ public sealed class BossSpawnPause : GlobalNPC
 
     private void AnnounceCountdown(NPC npc)
     {
-        if (Main.netMode == NetmodeID.MultiplayerClient || npc.type is not (NPCID.WallofFlesh or NPCID.SkeletronHead) ||
+        if (Main.netMode == NetmodeID.MultiplayerClient ||
             remainingTicks is not (3600 or 1800 or 600 or 300 or 240 or 180 or 120 or 60))
             return;
 
-        var message = NetworkText.FromFormattable("{0}将在 {1} 秒后可被攻击。",
+        var message = NetworkText.FromFormattable("{0}的开场保护还剩 {1} 秒。",
             Lang.GetNPCName(npc.type).ToNetworkText(), remainingTicks / 60);
         if (Main.netMode == NetmodeID.Server)
             ChatHelper.BroadcastChatMessage(message, Color.Gold);
