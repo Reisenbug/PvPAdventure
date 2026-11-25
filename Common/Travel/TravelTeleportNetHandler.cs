@@ -1,6 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
 using PvPAdventure.Common.Travel.Portals;
-using ErkySSC.Common.RegionProtection;
 using PvPAdventure.Content.Portals;
 using PvPAdventure.Core.Config;
 using PvPAdventure.Core.Net;
@@ -125,7 +124,7 @@ public static class TravelTeleportNetHandler
             player.fallStart = (int)(player.position.Y / 16f);
 
             TravelSectionSyncSystem.PrepareTeleport(whoAmI, player.position);
-            RegionTeleportSystem.Synchronize(player, TeleportationStyleID.TeleportationPotion);
+            SynchronizeTeleport(player, TeleportationStyleID.TeleportationPotion);
             NetMessage.SendData(MessageID.SyncPlayer, -1, -1, null, player.whoAmI);
             SendTeleportSound(player.Center);
             TravelTeleportSystem.StartTeleportCooldown(player);
@@ -145,7 +144,7 @@ public static class TravelTeleportNetHandler
         player.Teleport(position, TeleportationStyleID.RodOfDiscord);
         player.fallStart = (int)(position.Y / 16f);
 
-        RegionTeleportSystem.Synchronize(player, TeleportationStyleID.RodOfDiscord);
+        SynchronizeTeleport(player, TeleportationStyleID.RodOfDiscord);
         NetMessage.SendData(MessageID.SyncPlayer, -1, -1, null, player.whoAmI);
         SendTeleportSound(player.Center);
         TravelTeleportSystem.StartTeleportCooldown(player);
@@ -154,6 +153,10 @@ public static class TravelTeleportNetHandler
 
         //Log.Chat($"[TravelTeleport] Teleported {player.name}: type={type}, target={targetPlayerIndex}, pos={position}");
     }
+
+    private static void SynchronizeTeleport(Player player, int style) =>
+        NetMessage.SendData(MessageID.TeleportEntity, number: 0, number2: player.whoAmI,
+            number3: player.position.X, number4: player.position.Y, number5: style);
 
     private static void SendTeleportSound(Vector2 worldPosition)
     {

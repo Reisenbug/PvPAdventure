@@ -1,4 +1,3 @@
-using ErkySSC.Common.Security;
 using Microsoft.Xna.Framework;
 using PvPAdventure.Common.Game;
 using PvPAdventure.Core.Net;
@@ -12,6 +11,7 @@ using Terraria.GameContent.Achievements;
 using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
+using Terraria.Net.Sockets;
 
 namespace PvPAdventure.Common.Fishing;
 
@@ -251,8 +251,9 @@ internal sealed class AnglerQuestSystem : ModSystem
     {
         if (Main.netMode == NetmodeID.SinglePlayer)
             return "";
-        if (JoinAdmissionSystem.TryGetVerifiedSteamId(player.whoAmI, out ulong steamId))
-            return $"steam:{steamId}";
+        if (Main.netMode == NetmodeID.Server &&
+            Netplay.Clients[player.whoAmI]?.Socket?.GetRemoteAddress() is SteamAddress steam)
+            return $"steam:{steam.SteamId.m_SteamID}";
         // Local and community servers may allow unauthenticated connections.
         return $"name:{player.name}";
     }
