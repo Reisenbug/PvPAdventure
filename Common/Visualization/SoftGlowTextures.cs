@@ -11,23 +11,34 @@ internal sealed class SoftGlowTextures : ModSystem
 {
     internal const int Size = 32;
     private Texture2D band;
+    private Texture2D corner;
     private Texture2D bloom;
 
-    internal Texture2D Band => band ??= Create(radial: false);
-    internal Texture2D Bloom => bloom ??= Create(radial: true);
+    internal Texture2D Band => band ??= Create(1, (_, y) => BorderOpacity(y));
+    internal Texture2D Corner => corner ??= Create(Size, (x, y) => BorderOpacity(Math.Min(x, y)));
+    internal Texture2D Bloom => bloom ??= Create(Size, BloomOpacity);
 
-    private static Texture2D Create(bool radial)
+    private static float BorderOpacity(int distance)
     {
-        var texture = new Texture2D(Main.graphics.GraphicsDevice, radial ? Size : 1, Size);
-        var pixels = new Color[texture.Width * Size];
+        float fade = 1f - distance / (Size - 1f);
+        return fade * fade;
+    }
+
+    private static float BloomOpacity(int x, int y)
+    {
+        float dx = (x + 0.5f) * 2f / Size - 1f;
+        float dy = (y + 0.5f) * 2f / Size - 1f;
+        float fade = Math.Max(0f, 1f - MathF.Sqrt(dx * dx + dy * dy));
+        return fade * fade;
+    }
+
+    private static Texture2D Create(int width, Func<int, int, float> opacity)
+    {
+        var texture = new Texture2D(Main.graphics.GraphicsDevice, width, Size);
+        var pixels = new Color[width * Size];
         for (int y = 0; y < Size; y++)
-        for (int x = 0; x < texture.Width; x++)
-        {
-            float dy = (y + 0.5f) * 2f / Size - 1f;
-            float dx = radial ? (x + 0.5f) * 2f / Size - 1f : 0f;
-            float fade = Math.Max(0f, 1f - MathF.Sqrt(dx * dx + dy * dy));
-            pixels[y * texture.Width + x] = Color.White * (fade * fade);
-        }
+        for (int x = 0; x < width; x++)
+            pixels[y * width + x] = Color.White * opacity(x, y);
         texture.SetData(pixels);
         return texture;
     }
@@ -35,12 +46,14 @@ internal sealed class SoftGlowTextures : ModSystem
     public override void Unload()
     {
         Texture2D oldBand = band;
+        Texture2D oldCorner = corner;
         Texture2D oldBloom = bloom;
-        band = bloom = null;
-        if (oldBand != null || oldBloom != null)
+        band = corner = bloom = null;
+        if (oldBand != null || oldCorner != null || oldBloom != null)
             Main.QueueMainThreadAction(() =>
             {
                 oldBand?.Dispose();
+                oldCorner?.Dispose();
                 oldBloom?.Dispose();
             });
     }

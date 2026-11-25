@@ -37,15 +37,6 @@ public class SpawnBoxWorld : ModSystem
         if (ModContent.GetInstance<GameManager>().CurrentPhase == GameManager.Phase.Waiting)
             DrawBorder(batch, inner, color, pulse * 0.33f);
 
-        var textures = ModContent.GetInstance<SoftGlowTextures>();
-        int perimeter = (outer.Width + outer.Height) * 2;
-        for (int i = 0; i < 12; i++)
-        {
-            float distance = (time * 58f + i * perimeter / 12f) % perimeter;
-            Vector2 spark = PointOnBorder(outer, distance);
-            batch.Draw(textures.Bloom, spark, null, color * 0.72f, 0f, new Vector2(16f), 0.58f,
-                SpriteEffects.None, 0f);
-        }
         return true;
     }
 
@@ -53,34 +44,31 @@ public class SpawnBoxWorld : ModSystem
         new((int)(area.X * 16f - Main.screenPosition.X), (int)(area.Y * 16f - Main.screenPosition.Y),
             area.Width * 16, area.Height * 16);
 
-    private static Vector2 PointOnBorder(Rectangle area, float distance)
-    {
-        if (distance < area.Width) return new(area.Left + distance, area.Top);
-        distance -= area.Width;
-        if (distance < area.Height) return new(area.Right, area.Top + distance);
-        distance -= area.Height;
-        return distance < area.Width ? new(area.Right - distance, area.Bottom)
-            : new(area.Left, area.Bottom - (distance - area.Width));
-    }
-
     private static void DrawBorder(SpriteBatch batch, Rectangle area, Color color, float opacity)
     {
+        const int width = 16;
         var textures = ModContent.GetInstance<SoftGlowTextures>();
-        Texture2D band = textures.Band;
-        Color center = Color.Lerp(color, Color.White, 0.42f);
-        Vector2 origin = new(0f, SoftGlowTextures.Size / 2f);
+        Color tint = Color.Lerp(color, Color.White, 0.23f) * opacity;
+        float horizontal = area.Width - width * 2;
+        float vertical = area.Height - width * 2;
 
-        DrawEdge(new(area.Left, area.Top), area.Width, 0f);
-        DrawEdge(new(area.Left, area.Bottom), area.Width, 0f);
-        DrawEdge(new(area.Left, area.Top), area.Height, MathHelper.PiOver2);
-        DrawEdge(new(area.Right, area.Top), area.Height, MathHelper.PiOver2);
+        DrawEdge(new(area.Left + width, area.Top), horizontal, 0f);
+        DrawEdge(new(area.Right, area.Top + width), vertical, MathHelper.PiOver2);
+        DrawEdge(new(area.Right - width, area.Bottom), horizontal, MathHelper.Pi);
+        DrawEdge(new(area.Left, area.Bottom - width), vertical, -MathHelper.PiOver2);
+
+        DrawCorner(area.Left, area.Top, SpriteEffects.None);
+        DrawCorner(area.Right - width, area.Top, SpriteEffects.FlipHorizontally);
+        DrawCorner(area.Left, area.Bottom - width, SpriteEffects.FlipVertically);
+        DrawCorner(area.Right - width, area.Bottom - width, SpriteEffects.FlipHorizontally | SpriteEffects.FlipVertically);
 
         void DrawEdge(Vector2 position, float length, float angle)
         {
-            batch.Draw(band, position, null, color * (opacity * 0.52f), angle, origin,
-                new Vector2(length, 20f / SoftGlowTextures.Size), SpriteEffects.None, 0f);
-            batch.Draw(band, position, null, center * opacity, angle, origin,
-                new Vector2(length, 5f / SoftGlowTextures.Size), SpriteEffects.None, 0f);
+            batch.Draw(textures.Band, position, null, tint, angle, Vector2.Zero,
+                new Vector2(length, width / (float)SoftGlowTextures.Size), SpriteEffects.None, 0f);
         }
+
+        void DrawCorner(int x, int y, SpriteEffects flip) =>
+            batch.Draw(textures.Corner, new Rectangle(x, y, width, width), null, tint, 0f, Vector2.Zero, flip, 0f);
     }
 }
