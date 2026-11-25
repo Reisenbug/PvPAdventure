@@ -5,9 +5,6 @@ using PvPAdventure.Common.Game.StatTrackers;
 using PvPAdventure.Common.Statistics;
 using PvPAdventure.Common.Travel.Beds;
 using PylonMatch.Common.Scoreboard;
-using PvPAdventure.Common.RacePeriod;
-using Pylon.Common.SpiritAnimals;
-using ReLogic.Content;
 using AdventureAssets = PvPAdventure.Core.Utilities.Ass;
 using GameAssets = PylonMatch.Core.Assets.GameAssets;
 using System.Collections.Generic;
@@ -26,11 +23,6 @@ public class PvPFrameworkIntegration : ModSystem
 {
     public override void Load()
     {
-        // Pylon owns cosmetic selection and synchronization; Adventure owns race mechanics.
-        // The provider keeps that boundary data-driven and Bunny remains Adventure's fallback.
-        RacePeriodRules.MountTypeProvider = static player =>
-            player.GetModPlayer<SpiritAnimalPlayer>().MountType;
-        RacePeriodRules.SpriteSheetProvider = ResolveSpiritAnimalSpriteSheet;
         // Award team points when a team lands the killing blow on a boss/scoring NPC.
         PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.NpcKilledByPlayer += AwardNpcKill;
         PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.BossDamageDealt += RecordBossDamage;
@@ -43,38 +35,7 @@ public class PvPFrameworkIntegration : ModSystem
         PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.NpcKilledByPlayer -= AwardNpcKill;
         PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.BossDamageDealt -= RecordBossDamage;
         ScoreboardPlayerInfoService.RowsProvider = null;
-        RacePeriodRules.MountTypeProvider = null;
-        RacePeriodRules.SpriteSheetProvider = null;
     }
-
-    private static RacePeriodSpriteSheet? ResolveSpiritAnimalSpriteSheet(Player player)
-    {
-        // Dedicated servers own selection and physics but never load or draw cosmetic textures.
-        SpiritAnimalPlayer spiritAnimal = player.GetModPlayer<SpiritAnimalPlayer>();
-        if (Main.dedServ || !spiritAnimal.TryGetCustomSpriteSheet(out SpiritAnimalSpriteSheet sheet))
-            return null;
-
-        Asset<Texture2D> foreground = string.IsNullOrWhiteSpace(sheet.ForegroundTexturePath)
-            ? null
-            : ModContent.Request<Texture2D>(sheet.ForegroundTexturePath);
-
-        return new RacePeriodSpriteSheet(
-            BodyTexture: ModContent.Request<Texture2D>(sheet.BodyTexturePath),
-            ForegroundTexture: foreground,
-            TotalFrames: sheet.TotalFrames,
-            Standing: ConvertAnimation(sheet.Standing),
-            Running: ConvertAnimation(sheet.Running),
-            Airborne: ConvertAnimation(sheet.Airborne),
-            PoweredAirborne: ConvertAnimation(sheet.PoweredAirborne),
-            DrawOffset: sheet.DrawOffset.ToVector2(),
-            FrameCropBottom: sheet.FrameCropBottom,
-            Scale: sheet.Scale,
-            AnchorPlayerHeight: sheet.AnchorPlayerHeight);
-    }
-
-    private static RacePeriodAnimationRange ConvertAnimation(SpiritAnimalAnimationRange animation) =>
-        new(animation.StartFrame, animation.FrameCount, animation.FrameDelay,
-            animation.ScaleWithHorizontalSpeed);
 
     private static void AwardNpcKill(Player player, NPC npc) =>
         ModContent.GetInstance<PointsManager>().AwardNpcKillToTeam((Team)player.team, npc);

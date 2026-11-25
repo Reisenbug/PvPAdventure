@@ -1,7 +1,5 @@
-using System.Collections.Generic;
 using ErkySSC.Common.Visualization;
 using Microsoft.Xna.Framework.Graphics;
-using Pylon.Common.SpiritAnimals;
 using ReLogic.Content;
 using Terraria;
 using Terraria.ModLoader;
@@ -14,22 +12,11 @@ namespace PvPAdventure.Common.RacePeriod;
 [Autoload(Side = ModSide.Client)]
 internal sealed class RacePeriodMapHeads : ModSystem
 {
-    private readonly record struct AnimalArt(int MountType, Asset<Texture2D>? Body);
-
-    private readonly Dictionary<AnimalArt, Asset<Texture2D>> heads = new();
+    private Asset<Texture2D>? bunnyHead;
 
     public override void PostSetupContent()
     {
-        foreach (SpiritAnimalDefinition animal in SpiritAnimalCatalog.All)
-        {
-            if (!ModContent.RequestIfExists($"{Mod.Name}/Assets/SpiritAnimalMapHeads/{animal.ProductName}",
-                    out Asset<Texture2D> head, AssetRequestMode.ImmediateLoad))
-                continue;
-
-            Asset<Texture2D>? body = animal.CustomSpriteSheet is { } sheet
-                ? ModContent.Request<Texture2D>(sheet.BodyTexturePath) : null;
-            heads.Add(new AnimalArt(animal.MountType, body), head);
-        }
+        bunnyHead = Mod.Assets.Request<Texture2D>("Assets/SpiritAnimalMapHeads/bunny", AssetRequestMode.ImmediateLoad);
 
         ModContent.GetInstance<MapPlayerHeadControlSystem>().MapHeadAppearanceProvider = GetHead;
     }
@@ -39,7 +26,7 @@ internal sealed class RacePeriodMapHeads : ModSystem
         MapPlayerHeadControlSystem map = ModContent.GetInstance<MapPlayerHeadControlSystem>();
         if (map?.MapHeadAppearanceProvider == GetHead)
             map.MapHeadAppearanceProvider = null;
-        heads.Clear();
+        bunnyHead = null;
     }
 
     private MapHeadAppearance? GetHead(Player player)
@@ -47,10 +34,9 @@ internal sealed class RacePeriodMapHeads : ModSystem
         if (player.ghost || player.dead || !player.TryGetModPlayer(out RacePeriodPlayer race) || !race.IsRacing)
             return null;
 
-        Asset<Texture2D>? body = race.TryGetSpriteSheet(out RacePeriodSpriteSheet sheet) ? sheet.BodyTexture : null;
-        if (!heads.TryGetValue(new AnimalArt(player.mount.Type, body), out Asset<Texture2D>? head))
+        if (player.mount.Type != RacePeriodRules.FallbackMountType || bunnyHead is null)
             return null;
 
-        return new MapHeadAppearance(head.Value);
+        return new MapHeadAppearance(bunnyHead.Value);
     }
 }

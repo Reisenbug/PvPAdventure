@@ -1,7 +1,6 @@
 using ErkySSC.Common.Security;
 using Microsoft.Xna.Framework;
 using PvPAdventure.Common.Game;
-using PvPAdventure.Common.Game.GameReporters;
 using PvPAdventure.Core.Net;
 using System;
 using System.Collections.Generic;
@@ -252,8 +251,7 @@ internal sealed class AnglerQuestSystem : ModSystem
     {
         if (Main.netMode == NetmodeID.SinglePlayer)
             return "";
-        if (JoinAdmissionSystem.TryGetVerifiedSteamId(player.whoAmI, out ulong steamId) ||
-            PylonService.TryGetSteamId(player, out steamId))
+        if (JoinAdmissionSystem.TryGetVerifiedSteamId(player.whoAmI, out ulong steamId))
             return $"steam:{steamId}";
         // Local and community servers may allow unauthenticated connections.
         return $"name:{player.name}";
