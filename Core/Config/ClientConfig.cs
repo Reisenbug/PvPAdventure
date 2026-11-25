@@ -5,7 +5,6 @@ using PvPAdventure.Common.Travel.UI;
 using System.ComponentModel;
 using Terraria.ModLoader;
 using Terraria.ModLoader.Config;
-using PvPFramework.Core.Configs.ConfigElements;
 
 namespace PvPAdventure.Core.Config;
 
@@ -36,7 +35,6 @@ public class ClientConfig : ModConfig
     }
 
     [Header("Display")]
-    [HeaderIcon(nameof(PvPFramework.Core.Utilities.Ass.ConfigUI))]
     [BackgroundColor(36, 104, 118)]
     [DefaultValue(TravelUISize.Small)]
     [JsonConverter(typeof(StringEnumConverter))]

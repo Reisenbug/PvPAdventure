@@ -1,8 +1,6 @@
 ﻿using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using PvPAdventure.Core.Utilities;
-using ReLogic.Content;
 using Terraria;
 using Terraria.Audio;
 using Terraria.GameContent;
@@ -14,8 +12,6 @@ namespace PvPAdventure.UI;
 
 public class UISlider : UIElement
 {
-    public Asset<Texture2D> InnerTexture;
-    public Asset<Texture2D> OuterTexture;
     public bool Enabled = true;
     public bool IsHeld;
     public float Ratio;
@@ -26,8 +22,6 @@ public class UISlider : UIElement
     {
         Width.Set(0, 1f);
         Height.Set(16, 0f);
-        InnerTexture = PvPFramework.Core.Utilities.Ass.SliderGradient;
-        OuterTexture = PvPFramework.Core.Utilities.Ass.SliderHighlight;
     }
 
     public override void LeftMouseDown(UIMouseEvent evt)
@@ -87,23 +81,15 @@ public class UISlider : UIElement
     {
         Rectangle rect = GetDimensions().ToRectangle();
         Color drawColor = Enabled ? Color.White : Color.Gray * 0.65f;
-        DrawBar(sb, PvPFramework.Core.Utilities.Ass.Slider.Value, rect, drawColor);
-        if (Enabled && (IsHeld || IsMouseHovering))
-            DrawBar(sb, OuterTexture.Value, rect, Main.OurFavoriteColor);
+        Color background = Enabled && (IsHeld || IsMouseHovering) ? Main.OurFavoriteColor : drawColor;
+        Utils.DrawInvBG(sb, rect, background);
         Rectangle innerBarArea = rect;
         innerBarArea.Inflate(-4, -4);
-        sb.Draw(InnerTexture.Value, innerBarArea, drawColor);
+        sb.Draw(TextureAssets.ColorBar.Value, innerBarArea, drawColor);
         Texture2D blip = TextureAssets.ColorSlider.Value;
         Vector2 blipOrigin = blip.Size() * 0.5f;
         Vector2 blipPosition = new(innerBarArea.X + Ratio * innerBarArea.Width, innerBarArea.Center.Y);
         sb.Draw(blip, blipPosition, null, drawColor, 0f, blipOrigin, 1f, SpriteEffects.None, 0f);
     }
 
-    public static void DrawBar(SpriteBatch spriteBatch, Texture2D texture, Rectangle dimensions, Color color)
-    {
-        if (texture == null) return;
-        spriteBatch.Draw(texture, new Rectangle(dimensions.X, dimensions.Y, 6, dimensions.Height), new Rectangle(0, 0, 6, texture.Height), color);
-        spriteBatch.Draw(texture, new Rectangle(dimensions.X + 6, dimensions.Y, dimensions.Width - 12, dimensions.Height), new Rectangle(6, 0, 2, texture.Height), color);
-        spriteBatch.Draw(texture, new Rectangle(dimensions.X + dimensions.Width - 6, dimensions.Y, 6, dimensions.Height), new Rectangle(8, 0, 6, texture.Height), color);
-    }
 }

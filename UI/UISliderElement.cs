@@ -158,10 +158,11 @@ internal class UISliderElement : UIElement
         Rectangle rect = GetDimensions().ToRectangle();
         spriteBatch.Draw(TextureAssets.MagicPixel.Value, rect, Color.Black * 0.35f);
 
-        if (!ShowDisabledLockIcon || PvPFramework.Core.Utilities.Ass.IconLock?.Value == null)
+        if (!ShowDisabledLockIcon)
             return;
 
-        Texture2D lockTexture = PvPFramework.Core.Utilities.Ass.IconLock.Value;
+        Main.instance.LoadItem(Terraria.ID.ItemID.GoldenKey);
+        Texture2D lockTexture = TextureAssets.Item[Terraria.ID.ItemID.GoldenKey].Value;
         const int lockSize = 20;
         Rectangle lockRect = new(rect.Right - lockSize - 4, rect.Center.Y - lockSize / 2, lockSize, lockSize);
         spriteBatch.Draw(lockTexture, lockRect, Color.White * 0.85f);

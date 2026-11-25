@@ -1,10 +1,8 @@
 using PvPAdventure.Common.Security;
 using PvPAdventure.Core.Config.ConfigElements;
-using PvPFramework.Core.Configs.ConfigElements;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using Terraria.ID;
 using Terraria.Localization;
 using Terraria.ModLoader.Config;
 
@@ -15,7 +13,6 @@ public sealed class ServerConfig : ModConfig
     public override ConfigScope Mode => ConfigScope.ServerSide;
 
     [Header("Points")]
-    [HeaderIcon(nameof(Ass.IconPointsSetter))]
     [BackgroundColor(150, 104, 38)]
     [Expand(false, false)]
     public PointsConfig Points = new();
@@ -25,30 +22,24 @@ public sealed class ServerConfig : ModConfig
     public BountiesConfig Bounties = new();
 
     [Header("Gameplay")]
-    [ConfigIcon(ItemID.GoldChest, placement: ConfigIconPlacement.Inside)]
     [BackgroundColor(205, 110, 60)]
     [Expand(false, false)]
     public ShakingChestConfig ShakingChest = new();
 
-    [ConfigIcon(nameof(Ass.ConfigBed), placement: ConfigIconPlacement.Inside)]
     [BackgroundColor(205, 110, 60)]
     [Expand(false, false)]
     public TravelSystemConfig TravelSystem = new();
 
-    [ConfigIcon(ItemID.FuzzyCarrot, placement: ConfigIconPlacement.Inside)]
     [BackgroundColor(205, 110, 60)]
     [Expand(false, false)]
     public RacePeriodConfig RacePeriod = new();
 
     [Header("NPCs")]
-    [HeaderIcon(267)]
-    [ConfigIcon(nameof(Ass.ConfigBoundNPC))]
     [BackgroundColor(58, 108, 72)]
     [DefaultValue(ServerConfigDefaults.BoundSpawnChance)]
     public float BoundSpawnChance = ServerConfigDefaults.BoundSpawnChance;
 
     [Header("World")]
-    [HeaderIcon(ItemID.WorldGlobe)]
     [BackgroundColor(72, 104, 72)]
     [Expand(false, false)]
     [CustomModConfigItem(typeof(InvasionDictionaryElement))]
@@ -71,7 +62,6 @@ public sealed class ServerConfig : ModConfig
     public bool BroadcastWeatherMessages = true;
 
     [Header("WorldGen")]
-    [HeaderIcon(ItemID.WorldGlobe)]
     [BackgroundColor(114, 90, 46)]
     [Expand(false, false)]
     public WorldGenerationConfig WorldGeneration = new();
@@ -162,7 +152,6 @@ public sealed class ServerConfig : ModConfig
 
     public sealed class RacePeriodConfig
     {
-        [ConfigIcon(nameof(PvPFramework.Core.Utilities.Ass.IconCheckGreen), nameof(PvPFramework.Core.Utilities.Ass.IconXGray), grayWhenOff: true)]
         [DefaultValue(true)]
         public bool RacePeriodEnabled = true;
 
@@ -174,29 +163,24 @@ public sealed class ServerConfig : ModConfig
         public float RacePeriodRunSpeed = 8f;
 
         [RequiresField(nameof(RacePeriodEnabled))]
-        [ConfigIcon(nameof(PvPFramework.Core.Utilities.Ass.IconCheckGreen), nameof(PvPFramework.Core.Utilities.Ass.IconXGray), grayWhenOff: true)]
         [DefaultValue(true)]
         public bool RacePeriodTrailEnabled = true;
     }
 
     public sealed class TravelSystemConfig
     {
-        [ConfigIcon(nameof(PvPFramework.Core.Utilities.Ass.IconCheckGreen), nameof(PvPFramework.Core.Utilities.Ass.IconXGray), grayWhenOff: true)]
         [DefaultValue(true)]
         public bool IsTravelSystemEnabled = true;
 
         [RequiresField(nameof(IsTravelSystemEnabled))]
-        [ConfigIcon(nameof(Ass.ConfigMapWorldSpawn))]
         [DefaultValue(true)]
         public bool IsWorldSpawnTeleportEnabled = true;
 
         [RequiresField(nameof(IsTravelSystemEnabled))]
-        [ConfigIcon(nameof(Ass.ConfigPlayerHead))]
         [DefaultValue(true)]
         public bool IsTeammateSpawnTeleportEnabled = true;
 
         [RequiresField(nameof(IsTravelSystemEnabled))]
-        [ConfigIcon(nameof(Ass.IconQuestionMark))]
         [DefaultValue(ServerConfigDefaults.IsRandomTeleportEnabled)]
         public bool IsRandomTeleportEnabled = ServerConfigDefaults.IsRandomTeleportEnabled;
 
@@ -232,32 +216,25 @@ public sealed class ServerConfig : ModConfig
 
     public sealed class WorldGenerationConfig
     {
-        [ConfigIcon(ItemID.LifeFruit)]
         [DefaultValue(ServerConfigDefaults.LifeFruitChanceDenominator)]
         public int LifeFruitChanceDenominator = ServerConfigDefaults.LifeFruitChanceDenominator;
 
-        [ConfigIcon(ItemID.LifeFruit)]
         [DefaultValue(ServerConfigDefaults.LifeFruitExpertChanceDenominator)]
         public int LifeFruitExpertChanceDenominator = ServerConfigDefaults.LifeFruitExpertChanceDenominator;
 
-        [ConfigIcon(ItemID.LifeFruit)]
         [DefaultValue(ServerConfigDefaults.LifeFruitMinimumDistanceBetween)]
         public int LifeFruitMinimumDistanceBetween = ServerConfigDefaults.LifeFruitMinimumDistanceBetween;
 
-        [ConfigIcon(nameof(Ass.ConfigPlanterasBulb))]
         [DefaultValue(ServerConfigDefaults.PlanteraBulbChanceDenominator)]
         public int PlanteraBulbChanceDenominator = ServerConfigDefaults.PlanteraBulbChanceDenominator;
 
-        [ConfigIcon(ItemID.ChlorophyteOre)]
         [DefaultValue(ServerConfigDefaults.ChlorophyteSpreadChanceModifier)]
         public int ChlorophyteSpreadChanceModifier = ServerConfigDefaults.ChlorophyteSpreadChanceModifier;
 
-        [ConfigIcon(ItemID.ChlorophyteOre)]
         [Range(1, 1000)]
         [DefaultValue(ServerConfigDefaults.ChlorophyteGrowChanceModifier)]
         public int ChlorophyteGrowChanceModifier = ServerConfigDefaults.ChlorophyteGrowChanceModifier;
 
-        [ConfigIcon(ItemID.ChlorophyteOre)]
         [Range(1, 999999)]
         [DefaultValue(ServerConfigDefaults.ChlorophyteGrowLimitModifier)]
         public int ChlorophyteGrowLimitModifier = ServerConfigDefaults.ChlorophyteGrowLimitModifier;

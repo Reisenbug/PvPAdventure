@@ -72,10 +72,7 @@ public class UIPlusMinusButton : UIElement
             : new Color(86, 86, 96, 155);
         Color textColor = enabled ? Color.White : Color.Gray;
 
-        DrawBar(sb, PvPFramework.Core.Utilities.Ass.SliderButton.Value, rect, bg);
-
-        if (hovered)
-            DrawBar(sb, PvPFramework.Core.Utilities.Ass.SliderButtonHighlight.Value, rect, Color.Yellow);
+        Utils.DrawInvBG(sb, rect, bg);
 
         const float scale = 0.75f;
         Vector2 textSize = FontAssets.MouseText.Value.MeasureString(text) * scale;
@@ -85,13 +82,4 @@ public class UIPlusMinusButton : UIElement
         Utils.DrawBorderString(sb, text, position, textColor, scale);
     }
 
-    private static void DrawBar(SpriteBatch spriteBatch, Texture2D texture, Rectangle dimensions, Color color)
-    {
-        if (texture == null)
-            return;
-
-        spriteBatch.Draw(texture, new Rectangle(dimensions.X, dimensions.Y, 6, dimensions.Height), new Rectangle(0, 0, 6, texture.Height), color);
-        spriteBatch.Draw(texture, new Rectangle(dimensions.X + 6, dimensions.Y, dimensions.Width - 12, dimensions.Height), new Rectangle(6, 0, 2, texture.Height), color);
-        spriteBatch.Draw(texture, new Rectangle(dimensions.X + dimensions.Width - 6, dimensions.Y, 6, dimensions.Height), new Rectangle(8, 0, 6, texture.Height), color);
-    }
 }
