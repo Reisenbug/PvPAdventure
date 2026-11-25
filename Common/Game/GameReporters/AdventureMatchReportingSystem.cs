@@ -10,13 +10,13 @@ using Terraria.ModLoader;
 
 namespace PvPAdventure.Common.Game.GameReporters;
 
-/// <summary>Adventure match capture, replay ownership, reporting, and delayed result presentation.</summary>
+/// <summary>Owns local match statistics, replay recording, and delayed result presentation.</summary>
 internal sealed class AdventureMatchReportingSystem : ModSystem
 {
-    private AdventureMatchSession activeMatch;
+    private string matchToken;
     private EndScreenSummary pendingEndScreen;
     private ulong presentAfter;
-    public string CurrentMatchToken => activeMatch?.Token ?? "";
+    public string CurrentMatchToken => matchToken ?? "";
 
     public void Begin()
     {
@@ -25,54 +25,39 @@ internal sealed class AdventureMatchReportingSystem : ModSystem
         foreach (Player player in Main.ActivePlayers)
             if (player.TryGetModPlayer(out MatchStatsPlayer stats)) stats.ResetMatchStats();
         ModContent.GetInstance<PointsManager>().ResetForMatch();
-        activeMatch = new AdventureMatchSession(DateTime.UtcNow);
-        activeMatch.CaptureActivePlayers(discoverPlayers: true);
-        ModContent.GetInstance<ReeseReplayControlSystem>().StartMatchRecording(activeMatch.Token);
+        matchToken = Guid.NewGuid().ToString("N");
+        ModContent.GetInstance<ReeseReplayControlSystem>().StartMatchRecording(matchToken);
         if (Main.netMode == NetmodeID.Server) NetMessage.SendData(MessageID.WorldData);
-        Log.Info($"Started authoritative Adventure match. MatchToken={activeMatch.Token}");
+        Log.Info($"Started authoritative Adventure match. MatchToken={matchToken}");
     }
 
     public void Complete()
     {
-        if (Main.netMode == NetmodeID.MultiplayerClient || activeMatch == null) return;
-        AdventureMatchSession match = activeMatch;
-        activeMatch = null;
-        CompletedAdventureMatch completed = null;
-        try { completed = match.Complete(DateTime.UtcNow, ModContent.GetInstance<PointsManager>()); }
-        catch (Exception ex) { Log.Error($"Failed to freeze completed Adventure match. MatchToken={match.Token}, Error={ex}"); }
+        if (Main.netMode == NetmodeID.MultiplayerClient || matchToken == null) return;
+        string token = matchToken;
+        matchToken = null;
         try
         {
             // Framework has already respawned/staged players and synchronized Waiting.
-            pendingEndScreen = AdventureEndScreenExtension.CreateSummary(match.Token);
+            pendingEndScreen = AdventureEndScreenExtension.CreateSummary(token);
             presentAfter = Main.GameUpdateCount + 20;
         }
         catch (Exception ex) { Log.Error($"Failed to build the Adventure end screen: {ex}"); }
-        string replay = ModContent.GetInstance<ReeseReplayControlSystem>().StopMatchRecording(match.Token);
-        if (completed != null) MatchReporter.PostCompletedMatchSafe(completed, replay);
+        ModContent.GetInstance<ReeseReplayControlSystem>().StopMatchRecording(token);
     }
 
     public void Abort()
     {
-        AdventureMatchSession match = activeMatch;
-        activeMatch = null;
+        string token = matchToken;
+        matchToken = null;
         ClearPending();
-        if (match != null) ModContent.GetInstance<ReeseReplayControlSystem>().StopMatchRecording(match.Token);
-    }
-
-    public void CaptureDisconnectingPlayer(Player player)
-    {
-        if (Main.netMode == NetmodeID.Server) activeMatch?.CaptureDisconnectingPlayer(player);
+        if (token != null) ModContent.GetInstance<ReeseReplayControlSystem>().StopMatchRecording(token);
     }
 
     public void Tick()
     {
         GameSession session = GameSession.Instance;
         if (!session.IsSelected("pvpa")) return;
-        if (session.IsPlaying)
-        {
-            if (Main.netMode != NetmodeID.MultiplayerClient)
-                activeMatch?.CaptureActivePlayers(discoverPlayers: Main.GameUpdateCount % 60 == 0);
-        }
         if (pendingEndScreen == null || Main.netMode == NetmodeID.MultiplayerClient) return;
         if (session.IsRunning) { ClearPending(); return; }
         if (Main.GameUpdateCount < presentAfter) return;

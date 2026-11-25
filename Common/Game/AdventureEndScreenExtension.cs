@@ -39,10 +39,6 @@ internal static class AdventureEndScreenExtension
                 .ThenByDescending(player => player.DamageDealt)
                 .ToList()));
 
-        foreach (Player player in activePlayers)
-            summary.PlayerRewards[(byte)player.whoAmI] = MatchRewardCalculator.Calculate(
-                MatchRewardCalculator.CreateContext(player, points));
-
         return summary;
     }
 
