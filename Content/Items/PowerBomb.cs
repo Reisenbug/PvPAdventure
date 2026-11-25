@@ -36,13 +36,13 @@ internal class PowerBomb : ModItem
 
     public override void AddRecipes()
     {
-        Recipe cobalt = CreateRecipe();
+        Recipe cobalt = CreateRecipe(5);
         cobalt.AddIngredient(ItemID.Bomb, 5);
         cobalt.AddIngredient(ItemID.CobaltBar, 1);
         cobalt.AddTile(TileID.Anvils);
         cobalt.Register();
 
-        Recipe palladium = CreateRecipe();
+        Recipe palladium = CreateRecipe(5);
         palladium.AddIngredient(ItemID.Bomb, 5);
         palladium.AddIngredient(ItemID.PalladiumBar, 1);
         palladium.AddTile(TileID.Anvils);
