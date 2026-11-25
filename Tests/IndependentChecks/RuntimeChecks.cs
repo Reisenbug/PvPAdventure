@@ -125,6 +125,12 @@ public sealed partial class RuntimeChecks : ModSystem
             }
             a.team = b.team = 1;
             c.team = 2;
+            if (Terraria.Program.LaunchParameters.ContainsKey("-portallandingchecks"))
+            {
+                CheckPortalLanding(a, b);
+                Console.WriteLine($"PORTAL_LANDING_CHECKS_PASSED {assertions}");
+                Environment.Exit(0);
+            }
             if (Terraria.Program.LaunchParameters.ContainsKey("-raceperiodchecks"))
             {
                 CheckRacePeriod(a);

@@ -11,9 +11,11 @@ using PvPAdventure.Core.Config;
 using PvPAdventure.Core.Net;
 using Terraria;
 using Terraria.Audio;
+using Terraria.Chat;
 using Terraria.DataStructures;
 using Terraria.GameInput;
 using Terraria.ID;
+using Terraria.Localization;
 using Terraria.Map;
 using Terraria.ModLoader;
 using Terraria.UI;
@@ -250,9 +252,12 @@ public sealed class PortalSystem : ModSystem
 
     internal static bool Teleport(Player player, NPC portal)
     {
+        for (int column = 0; column <= 8; column++)
         for (int offset = 0; offset <= 64; offset += 16)
         {
-            Vector2 destination = new(portal.Center.X - player.width / 2f, portal.Bottom.Y - player.height - offset);
+            int horizontalOffset = ((column + 1) / 2) * 16 * (column % 2 == 0 ? 1 : -1);
+            Vector2 destination = new(portal.Center.X - player.width / 2f + horizontalOffset,
+                portal.Bottom.Y - player.height - offset);
             int x = (int)destination.X / 16;
             int y = (int)destination.Y / 16;
             if (x < 1 || y < 1 || x + 3 >= Main.maxTilesX || y + 4 >= Main.maxTilesY ||
@@ -271,6 +276,14 @@ public sealed class PortalSystem : ModSystem
             Log.Info($"Portal teleport: player={player.whoAmI}, npc={portal.whoAmI}, destination={destination}");
             return true;
         }
+
+        const string noLanding = "传送门附近没有安全落点，请清理附近方块后再试。";
+        if (Main.netMode == NetmodeID.Server)
+            ChatHelper.SendChatMessageToClient(NetworkText.FromLiteral(noLanding), Color.Gold, player.whoAmI);
+        else
+            Main.NewText(noLanding, Color.Gold);
+
+        Log.Info($"Portal teleport blocked: player={player.whoAmI}, npc={portal.whoAmI}, no safe landing");
         return false;
     }
 }
