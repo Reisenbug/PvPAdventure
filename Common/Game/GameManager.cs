@@ -88,6 +88,7 @@ public sealed class GameManager : ModSystem
             AnglerQuestSystem.EndMatch();
             Reporting.Complete();
             AdventureWorldRules.EnterLobby();
+            AdventureWorldRules.ReturnPlayersToSpawn();
         }
         Sync();
         return true;
