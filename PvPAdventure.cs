@@ -120,6 +120,11 @@ public class PvPAdventure : Mod
             return true;
 
         MatchStatsPlayer stats = player.GetModPlayer<MatchStatsPlayer>();
+        if (saved.ContainsKey("snapshot"))
+        {
+            stats.LoadSnapshot(saved.GetCompound("snapshot"));
+            return true;
+        }
         stats.SetStat(MatchStatKey.Kills, (uint)System.Math.Max(0, saved.GetInt("kills")));
         stats.SetStat(MatchStatKey.Deaths, (uint)System.Math.Max(0, saved.GetInt("deaths")));
         stats.SetStat(MatchStatKey.DamageDealt, (uint)System.Math.Clamp(saved.Get<long>("damage"), 0L, uint.MaxValue));
@@ -138,9 +143,10 @@ public class PvPAdventure : Mod
         TagCompound ssc = root.ContainsKey("ErkySSC") ? root.GetCompound("ErkySSC") : [];
         ssc["PvPAdventure"] = new TagCompound
         {
-            ["version"] = 2,
+            ["version"] = 3,
             ["characterKey"] = characterKey ?? "",
             ["matchToken"] = CurrentMatchToken(),
+            ["snapshot"] = stats.SaveSnapshot(),
             ["kills"] = (int)System.Math.Min(stats.GetStat(MatchStatKey.Kills), int.MaxValue),
             ["deaths"] = (int)System.Math.Min(stats.GetStat(MatchStatKey.Deaths), int.MaxValue),
             ["damage"] = (long)stats.GetStat(MatchStatKey.DamageDealt),

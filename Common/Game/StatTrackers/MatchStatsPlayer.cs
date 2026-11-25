@@ -6,6 +6,7 @@ using Terraria;
 using Terraria.Enums;
 using Terraria.ID;
 using Terraria.ModLoader;
+using Terraria.ModLoader.IO;
 
 namespace PvPAdventure.Common.Game.StatTrackers;
 
@@ -93,6 +94,50 @@ internal sealed class MatchStatsPlayer : ModPlayer
             result[statKey] = new Dictionary<int, uint>(byItem);
 
         return result;
+    }
+
+    internal TagCompound SaveSnapshot()
+    {
+        var snapshot = new TagCompound();
+        foreach (MatchStatKey stat in System.Enum.GetValues<MatchStatKey>())
+        {
+            string key = StatsReporter.GetStatKey(stat);
+            uint amount = GetStat(stat);
+            if (amount == 0)
+                continue;
+
+            TagCompound entry = new() { ["total"] = (long)amount };
+            if (itemStats.TryGetValue(key, out var byItem))
+            {
+                List<TagCompound> items = [];
+                foreach ((int item, uint value) in byItem)
+                    items.Add(new TagCompound { ["id"] = item, ["amount"] = (long)value });
+                entry["items"] = items;
+            }
+            snapshot[key] = entry;
+        }
+        return snapshot;
+    }
+
+    internal void LoadSnapshot(TagCompound snapshot)
+    {
+        ResetMatchStats();
+        foreach (MatchStatKey stat in System.Enum.GetValues<MatchStatKey>())
+        {
+            string key = StatsReporter.GetStatKey(stat);
+            if (!snapshot.ContainsKey(key))
+                continue;
+
+            TagCompound entry = snapshot.GetCompound(key);
+            SetStat(stat, (uint)System.Math.Clamp(entry.GetLong("total"), 0L, uint.MaxValue));
+            foreach (TagCompound item in entry.GetList<TagCompound>("items"))
+            {
+                int id = item.GetInt("id");
+                uint amount = (uint)System.Math.Clamp(item.GetLong("amount"), 0L, uint.MaxValue);
+                if (id >= 0 && amount > 0)
+                    AddItemStat(key, id, amount);
+            }
+        }
     }
 
     public void ApplyDelta(MatchStatKey statKey, int itemKey, uint amount)
