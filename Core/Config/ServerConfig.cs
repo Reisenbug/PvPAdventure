@@ -3,6 +3,7 @@ using PvPAdventure.Core.Config.ConfigElements;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using Terraria;
 using Terraria.Localization;
 using Terraria.ModLoader.Config;
 
@@ -105,7 +106,6 @@ public sealed class ServerConfig : ModConfig
     public sealed class PointsConfig
     {
         [Expand(false, false)]
-        [CustomModConfigItem(typeof(DefinitionDictionaryElement))]
         public Dictionary<NPCDefinition, NpcPoints> Npc = ServerConfigDefaults.CreateNpcPoints();
 
         [Expand(false, false)]
@@ -155,14 +155,12 @@ public sealed class ServerConfig : ModConfig
         [DefaultValue(true)]
         public bool RacePeriodEnabled = true;
 
-        [RequiresField(nameof(RacePeriodEnabled))]
         [Range(1f, 20f)]
         [Increment(0.25f)]
         [DefaultValue(8f)]
         [Slider]
         public float RacePeriodRunSpeed = 8f;
 
-        [RequiresField(nameof(RacePeriodEnabled))]
         [DefaultValue(true)]
         public bool RacePeriodTrailEnabled = true;
     }
@@ -172,43 +170,34 @@ public sealed class ServerConfig : ModConfig
         [DefaultValue(true)]
         public bool IsTravelSystemEnabled = true;
 
-        [RequiresField(nameof(IsTravelSystemEnabled))]
         [DefaultValue(true)]
         public bool IsWorldSpawnTeleportEnabled = true;
 
-        [RequiresField(nameof(IsTravelSystemEnabled))]
         [DefaultValue(true)]
         public bool IsTeammateSpawnTeleportEnabled = true;
 
-        [RequiresField(nameof(IsTravelSystemEnabled))]
         [DefaultValue(ServerConfigDefaults.IsRandomTeleportEnabled)]
         public bool IsRandomTeleportEnabled = ServerConfigDefaults.IsRandomTeleportEnabled;
 
-        [RequiresField(nameof(IsTravelSystemEnabled))]
         [DefaultValue(true)]
         public bool AllowSpectating = true;
 
-        [RequiresField(nameof(IsTravelSystemEnabled))]
         [Range(0, 60)]
         [DefaultValue(ServerConfigDefaults.TravelPortalCreationTimePreHardmodeSeconds)]
         public int TravelPortalCreationTimePreHardmodeSeconds = ServerConfigDefaults.TravelPortalCreationTimePreHardmodeSeconds;
 
-        [RequiresField(nameof(IsTravelSystemEnabled))]
         [Range(0, 60)]
         [DefaultValue(10)]
         public int TravelPortalCreationTimeHardmodeSeconds = 10;
 
-        [RequiresField(nameof(IsTravelSystemEnabled))]
         [Range(0, 60)]
         [DefaultValue(8)]
         public int TravelRegionRadiusTiles = 8;
 
-        [RequiresField(nameof(IsTravelSystemEnabled))]
         [Range(-60, 60)]
         [DefaultValue(30)]
         public int PortalCreationOffset = 30;
 
-        [RequiresField(nameof(IsTravelSystemEnabled))]
         [Range(0, 60)]
         [DefaultValue(ServerConfigDefaults.TeleportCooldownSeconds)]
         public int TeleportCooldownSeconds = ServerConfigDefaults.TeleportCooldownSeconds;
