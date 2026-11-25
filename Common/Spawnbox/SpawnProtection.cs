@@ -80,8 +80,14 @@ internal sealed class SpawnProtectionPlayer : ModPlayer
         }
         else
         {
-            Player.position.Y = start.Bottom <= bounds.Top ? bounds.Top - Player.height : bounds.Bottom;
+            bool fromAbove = start.Bottom <= bounds.Top;
+            Player.position.Y = fromAbove ? bounds.Top - Player.height : bounds.Bottom;
             Player.velocity.Y = 0f;
+            if (fromAbove ? Player.gravDir > 0f : Player.gravDir < 0f)
+            {
+                Player.jump = 0;
+                Player.RefreshMovementAbilities(!Player.mount.Active || !Player.mount.BlockExtraJumps);
+            }
         }
     }
 
