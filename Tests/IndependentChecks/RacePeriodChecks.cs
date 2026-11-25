@@ -45,10 +45,21 @@ public sealed partial class RuntimeChecks
         game.CurrentPhase = GameManager.Phase.Playing;
         race.PostUpdateMiscEffects();
         Check(race.InRacePeriod, "Race continues when the match starts");
+        Vector2 spawn = player.Center;
+        player.Center += new Vector2(80 * 16, 0);
         player.mount.Dismount(player);
         race.PostUpdateMiscEffects();
         Check(!race.InRacePeriod, "Dismount clears race protection");
         race.PostUpdateMiscEffects();
-        Check(!player.mount.Active, "Players cannot rejoin the race during the match");
+        Check(!player.mount.Active, "Players cannot remount outside the spawn region");
+        player.Center = spawn;
+        race.PostUpdateMiscEffects();
+        Check(race.InRacePeriod && player.mount.Type == MountID.Bunny, "Returning to spawn during the match mounts the race bunny");
+        player.dead = true;
+        race.PostUpdateMiscEffects();
+        Check(!player.mount.Active && !race.InRacePeriod, "Dead players cannot enter race state");
+        player.dead = false;
+        race.PostUpdateMiscEffects();
+        Check(race.InRacePeriod && player.mount.Type == MountID.Bunny, "Respawning at world spawn mounts the race bunny");
     }
 }

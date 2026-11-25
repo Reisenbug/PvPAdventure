@@ -37,7 +37,7 @@ public sealed class RacePeriodPlayer : ModPlayer
 
     public bool InRacePeriod => FeatureEnabled && raceMountApplied && !Player.dead && !Player.ghost;
     internal bool IsRacing => InRacePeriod && Player.mount.Active && Player.mount.Type == RaceMount;
-    private bool InEntryArea => FeatureEnabled && Waiting && Player.active && !Player.dead && !Player.ghost &&
+    private bool InEntryArea => FeatureEnabled && Player.active && !Player.dead && !Player.ghost &&
         ModContent.GetInstance<RegionManager>().GetRegionContaining(Player.Center.ToTileCoordinates()) != null;
 
     public override void Load() => On_Player.QuickMount += BlockMountToggleWhileWaiting;
@@ -45,7 +45,7 @@ public sealed class RacePeriodPlayer : ModPlayer
 
     private static void BlockMountToggleWhileWaiting(On_Player.orig_QuickMount orig, Player player)
     {
-        if (!player.GetModPlayer<RacePeriodPlayer>().InEntryArea)
+        if (!Waiting || !player.GetModPlayer<RacePeriodPlayer>().InEntryArea)
             orig(player);
     }
 
@@ -56,7 +56,7 @@ public sealed class RacePeriodPlayer : ModPlayer
             Player.controlUseItem = false;
             Player.controlUseTile = false;
         }
-        if (InEntryArea)
+        if (Waiting && InEntryArea)
             Player.controlHook = false;
     }
 
