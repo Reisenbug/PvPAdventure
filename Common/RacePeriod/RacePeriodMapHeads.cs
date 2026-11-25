@@ -1,7 +1,9 @@
-using ErkySSC.Common.Visualization;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ReLogic.Content;
 using Terraria;
+using Terraria.Graphics;
+using Terraria.Graphics.Renderers;
 using Terraria.ModLoader;
 
 #nullable enable
@@ -14,29 +16,30 @@ internal sealed class RacePeriodMapHeads : ModSystem
 {
     private Asset<Texture2D>? bunnyHead;
 
-    public override void PostSetupContent()
+    public override void Load()
     {
         bunnyHead = Mod.Assets.Request<Texture2D>("Assets/SpiritAnimalMapHeads/bunny", AssetRequestMode.ImmediateLoad);
-
-        ModContent.GetInstance<MapPlayerHeadControlSystem>().MapHeadAppearanceProvider = GetHead;
+        On_MapHeadRenderer.DrawPlayerHead += DrawHead;
     }
 
     public override void Unload()
     {
-        MapPlayerHeadControlSystem map = ModContent.GetInstance<MapPlayerHeadControlSystem>();
-        if (map?.MapHeadAppearanceProvider == GetHead)
-            map.MapHeadAppearanceProvider = null;
+        On_MapHeadRenderer.DrawPlayerHead -= DrawHead;
         bunnyHead = null;
     }
 
-    private MapHeadAppearance? GetHead(Player player)
+    private void DrawHead(On_MapHeadRenderer.orig_DrawPlayerHead original, MapHeadRenderer self, Camera camera,
+        Player player, Vector2 position, float alpha, float scale, Color borderColor)
     {
-        if (player.ghost || player.dead || !player.TryGetModPlayer(out RacePeriodPlayer race) || !race.IsRacing)
-            return null;
+        if (player.ghost || player.dead || player.mount.Type != RacePeriodRules.FallbackMountType ||
+            bunnyHead is null || !player.TryGetModPlayer(out RacePeriodPlayer race) || !race.IsRacing)
+        {
+            original(self, camera, player, position, alpha, scale, borderColor);
+            return;
+        }
 
-        if (player.mount.Type != RacePeriodRules.FallbackMountType || bunnyHead is null)
-            return null;
-
-        return new MapHeadAppearance(bunnyHead.Value);
+        Texture2D texture = bunnyHead.Value;
+        Vector2 origin = new(texture.Width * 0.5f, texture.Height * 0.5f);
+        Main.spriteBatch.Draw(texture, position, null, Color.White * alpha, 0f, origin, scale, SpriteEffects.None, 0f);
     }
 }

@@ -192,7 +192,8 @@ internal sealed class RacePeriodMountLayer : PlayerDrawLayer
     {
         int start = drawInfo.DrawDataCache.Count;
         DrawAnimal(ref drawInfo);
-        for (int i = start; i < drawInfo.DrawDataCache.Count; i++)
+        int end = drawInfo.DrawDataCache.Count;
+        for (int i = start; i < end; i++)
         {
             DrawData part = drawInfo.DrawDataCache[i];
             part.shader = RacePeriodGhostShader.BodyShader;
@@ -202,8 +203,7 @@ internal sealed class RacePeriodMountLayer : PlayerDrawLayer
         if (drawInfo.drawPlayer.TryGetModPlayer(out RacePeriodVisuals visuals))
             visuals.DrawTrail(ref drawInfo, start);
 
-        // Send only the finished animal silhouette to the shared glow pass.
-        RacePeriodGhostShader.AppendGlow(ref drawInfo, start);
+        RacePeriodGhostShader.AddGlow(ref drawInfo, start, end);
     }
 
     private static void DrawAnimal(ref PlayerDrawSet drawInfo)
