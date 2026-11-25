@@ -244,11 +244,6 @@ namespace PvPAdventure.Common.Travel.Portals
 {
     public class PortalPlayer { internal PortalCreationAttempt CreationAttempt { get; } = new(); public void CancelCreation() { } }
     public static class PortalAssets { public static Texture2D GetPortalTexture(int team) => new(); public static Texture2D GetCreatorTexture(int team) => new(); }
-    public static class PortalCreatorSkin
-    {
-        public static bool TryGetTexture(Terraria.Item item, int team, out Texture2D texture) { texture = null; return false; }
-        public static (Rectangle, Vector2) Rescale(Rectangle a, Vector2 b, Texture2D c, Texture2D d) => (a, b);
-    }
     public static class PortalDrawer
     {
         public static void SpawnPortalFadeInDust(Vector2 p, int team) { }

@@ -30,9 +30,7 @@ internal sealed class PortalCreatorItemDrawer : ModSystem
         Texture2D vanilla = TextureAssets.Item[item.type].Value;
 
         int team = drawInfo.drawPlayer.team;
-        Texture2D replacement = PortalCreatorSkin.TryGetTexture(item, team, out Texture2D skin)
-            ? skin
-            : PortalAssets.GetCreatorTexture(team);
+        Texture2D replacement = PortalAssets.GetCreatorTexture(team);
 
         int start = drawInfo.DrawDataCache.Count;
         orig(ref drawInfo);
@@ -44,7 +42,6 @@ internal sealed class PortalCreatorItemDrawer : ModSystem
                 continue;
 
             data.texture = replacement;
-            (data.sourceRect, data.origin) = PortalCreatorSkin.Rescale(data.sourceRect, data.origin, vanilla, replacement);
             drawInfo.DrawDataCache[i] = data;
         }
     }

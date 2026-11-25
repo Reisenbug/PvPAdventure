@@ -1,6 +1,5 @@
 ﻿using Microsoft.Xna.Framework.Graphics;
 using ReLogic.Content;
-using Terraria;
 using Terraria.ModLoader;
 
 namespace PvPAdventure.Common.Travel.Portals;
@@ -8,7 +7,6 @@ namespace PvPAdventure.Common.Travel.Portals;
 internal static class PortalAssets
 {
     private static readonly Texture2D[] CreatorTextures = new Texture2D[6];
-    private static readonly Asset<Texture2D>[] PortalGunSkinTextures = new Asset<Texture2D>[6];
     private static readonly Texture2D[] PortalTextures = new Texture2D[6];
     private static readonly Texture2D[] PortalMinimapTextures = new Texture2D[6];
     private static readonly Texture2D[] PortalOutlinesTextures = new Texture2D[6];
@@ -31,27 +29,6 @@ internal static class PortalAssets
             GetCreatorTexturePath(index),
             AssetRequestMode.ImmediateLoad
         ).Value;
-    }
-
-    /// <summary>
-    /// The portal gun skin variant for a team, or null when the texture is unavailable.
-    /// Callers fall back to <see cref="GetCreatorTexture"/>.
-    /// </summary>
-    public static Texture2D GetPortalGunSkinTexture(int team)
-    {
-        if (Main.dedServ)
-            return null;
-
-        int index = GetTeamIndex(team);
-        Asset<Texture2D> asset = PortalGunSkinTextures[index];
-        if (asset is null)
-        {
-            if (!ModContent.RequestIfExists(GetPortalGunSkinTexturePath(index), out asset, AssetRequestMode.ImmediateLoad))
-                return null;
-            PortalGunSkinTextures[index] = asset;
-        }
-
-        return asset is { IsLoaded: true } ? asset.Value : null;
     }
 
     public static Texture2D GetPortalTexture(int team)
@@ -81,16 +58,6 @@ internal static class PortalAssets
 
         return 0;
     }
-
-    private static string GetPortalGunSkinTexturePath(int team) => team switch
-    {
-        1 => "Pylon/Assets/Shop/PortalGunSkinRed",
-        2 => "Pylon/Assets/Shop/PortalGunSkinGreen",
-        3 => "Pylon/Assets/Shop/PortalGunSkinBlue",
-        4 => "Pylon/Assets/Shop/PortalGunSkinYellow",
-        5 => "Pylon/Assets/Shop/PortalGunSkinPink",
-        _ => "Pylon/Assets/Shop/PortalGunSkinWhite"
-    };
 
     private static string GetCreatorTexturePath(int team)
     {
