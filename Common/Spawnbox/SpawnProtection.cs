@@ -26,6 +26,15 @@ internal sealed class SpawnProtectionTile : GlobalTile
 internal sealed class SpawnProtectionPlayer : ModPlayer
 {
     private bool confined;
+    private Vector2 movementStart;
+    private bool startedOutsideSpawn;
+
+    public override void PreUpdateMovement()
+    {
+        Rectangle bounds = AdventureRegionSystem.WorldArea;
+        startedOutsideSpawn = !bounds.IsEmpty && !bounds.Intersects(Player.Hitbox);
+        movementStart = Player.position;
+    }
 
     public override void PostUpdate()
     {
@@ -33,10 +42,14 @@ internal sealed class SpawnProtectionPlayer : ModPlayer
             return;
 
         Rectangle bounds = AdventureRegionSystem.WorldArea;
-        if (Player.dead || bounds.IsEmpty ||
-            ModContent.GetInstance<GameManager>().CurrentPhase != GameManager.Phase.Waiting)
+        GameManager.Phase phase = ModContent.GetInstance<GameManager>().CurrentPhase;
+        if (Player.dead || bounds.IsEmpty || phase != GameManager.Phase.Waiting)
         {
             confined = false;
+            if (!Player.dead && !Player.ghost && phase == GameManager.Phase.Playing &&
+                startedOutsideSpawn && bounds.Intersects(Player.Hitbox))
+                BlockEntry(bounds);
+            startedOutsideSpawn = false;
             return;
         }
 
@@ -55,6 +68,21 @@ internal sealed class SpawnProtectionPlayer : ModPlayer
         if (y != position.Y)
             Player.velocity.Y = 0;
         Player.position = new Vector2(x, y);
+    }
+
+    private void BlockEntry(Rectangle bounds)
+    {
+        Rectangle start = new((int)movementStart.X, (int)movementStart.Y, Player.width, Player.height);
+        if (start.Right <= bounds.Left || start.Left >= bounds.Right)
+        {
+            Player.position.X = start.Right <= bounds.Left ? bounds.Left - Player.width : bounds.Right;
+            Player.velocity.X = 0f;
+        }
+        else
+        {
+            Player.position.Y = start.Bottom <= bounds.Top ? bounds.Top - Player.height : bounds.Bottom;
+            Player.velocity.Y = 0f;
+        }
     }
 
     public override bool CanHitPvp(Item item, Player target) =>
