@@ -13,7 +13,7 @@ public sealed class MatchCommand : ModCommand
 
     public override string Command => "pvpmatch";
     public override CommandType Type => CommandType.Chat | CommandType.Console;
-    public override string Usage => "/pvpmatch start [minutes] | pause | end | points <team> <value>";
+    public override string Usage => "/pvpmatch start [minutes] [countdown seconds] | pause | end | points <team> <value>";
 
     public override void Action(CommandCaller caller, string input, string[] args)
     {
@@ -29,9 +29,11 @@ public sealed class MatchCommand : ModCommand
         }
 
         int minutes = GameManager.DefaultDurationMinutes;
-        if (args.Length is < 1 or > 2 ||
-            (args.Length == 2 && (args[0] != "start" || !int.TryParse(args[1], out minutes))) ||
-            minutes is < 1 or > GameManager.MaxDurationMinutes)
+        int countdown = 10;
+        if (args.Length is < 1 or > 3 ||
+            (args.Length >= 2 && (args[0] != "start" || !int.TryParse(args[1], out minutes))) ||
+            (args.Length == 3 && !int.TryParse(args[2], out countdown)) ||
+            minutes is < 1 or > GameManager.MaxDurationMinutes || countdown is < 0 or > 60)
         {
             caller.Reply(Usage);
             return;
@@ -39,18 +41,19 @@ public sealed class MatchCommand : ModCommand
 
         switch (args[0])
         {
-            case "start": Request(ActionKind.Start, minutes, 10); break;
-            case "pause": Request(ActionKind.Pause); break;
-            case "end": Request(ActionKind.End); break;
+            case "start": Request(ActionKind.Start, minutes, countdown, caller); break;
+            case "pause": Request(ActionKind.Pause, caller: caller); break;
+            case "end": Request(ActionKind.End, caller: caller); break;
             default: caller.Reply(Usage); break;
         }
     }
 
-    internal static void Request(ActionKind action, int minutes = 0, int countdown = 0)
+    internal static void Request(ActionKind action, int minutes = 0, int countdown = 0, CommandCaller caller = null)
     {
         if (Main.netMode != NetmodeID.MultiplayerClient)
         {
-            Apply(action, minutes, countdown);
+            bool changed = Apply(action, minutes, countdown);
+            caller?.Reply(changed ? "Match control accepted." : "That match control is unavailable right now.");
             return;
         }
 
@@ -71,14 +74,15 @@ public sealed class MatchCommand : ModCommand
         Apply((ActionKind)reader.ReadByte(), reader.ReadInt32(), reader.ReadInt32());
     }
 
-    private static void Apply(ActionKind action, int minutes, int countdown)
+    private static bool Apply(ActionKind action, int minutes, int countdown)
     {
         GameManager game = ModContent.GetInstance<GameManager>();
-        switch (action)
+        return action switch
         {
-            case ActionKind.Start: game.Start(minutes, countdown); break;
-            case ActionKind.Pause: game.TogglePause(); break;
-            case ActionKind.End: game.End(); break;
-        }
+            ActionKind.Start => game.Start(minutes, countdown),
+            ActionKind.Pause => game.TogglePause(),
+            ActionKind.End => game.End(),
+            _ => false
+        };
     }
 }

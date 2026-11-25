@@ -45,7 +45,17 @@ public class Scoreline : ModSystem
             var teams = Main.player.Where(player => player?.active == true && (Team)player.team != Team.None)
                 .Select(player => (Team)player.team).Distinct().OrderBy(team => team).ToArray();
             int timerWidth = (int)(96 * scale);
-            Rectangle timer = new(((int)(Main.screenWidth / Main.UIScale) - timerWidth) / 2, 4, timerWidth, pointHeight);
+            Rectangle timer = new((Main.screenWidth - timerWidth) / 2, 4, timerWidth, pointHeight);
+            if (!Main.mapFullscreen && timer.Contains(Main.mouseX, Main.mouseY))
+            {
+                Main.LocalPlayer.mouseInterface = true;
+                Main.instance.MouseText("Match controls");
+                if (Main.mouseLeft && Main.mouseLeftRelease)
+                {
+                    Main.mouseLeftRelease = false;
+                    ModContent.GetInstance<MatchControlsUI>().Toggle();
+                }
+            }
             int leftCount = (teams.Length + 1) / 2;
             string timerText = game.IsPaused ? "Paused" : game.CountdownTicks > 0
                 ? ((game.CountdownTicks + 59) / 60).ToString()
