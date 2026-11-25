@@ -138,10 +138,13 @@ internal sealed class ServerCharacters : ModSystem
         player.active = joining.active;
         player.team = team;
         player.respawnTimer = 0;
+        player.FindSpawn();
         Main.player[slot] = player;
         sessions.Add(slot, new CharacterSession(store, file, ReadPosition(character)));
         PvPAdventure.ImportSscStats(player, player.name, modded);
         Send(slot, payload);
+        if (Player.CheckSpawn(player.SpawnX, player.SpawnY))
+            RemoteClient.CheckSection(slot, new Vector2(player.SpawnX * 16f + 8f, player.SpawnY * 16f));
     }
 
     private void Send(int slot, byte[] bytes)
