@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Xna.Framework;
+using PvPAdventure.Common.Game;
+using PvPAdventure.Common.Travel;
 using PvPAdventure.Core.Config;
 using PvPAdventure.Core.Net;
 using Terraria;
@@ -22,7 +24,10 @@ internal sealed class ServerCharacters : ModSystem
     private PlayerFileData serverFile;
     private MemoryStream transfer;
 
-    private sealed record CharacterSession(ServerCharacterStore Store, PlayerFileData File);
+    private sealed record CharacterSession(ServerCharacterStore Store, PlayerFileData File, Vector2? SavedPosition)
+    {
+        public bool Joined { get; set; }
+    }
     private static ServerCharacters Instance => ModContent.GetInstance<ServerCharacters>();
 
     public override void Load() => On_Player.InternalSavePlayerFile += SaveLocalFile;
@@ -103,7 +108,8 @@ internal sealed class ServerCharacters : ModSystem
             modded = PlayerIO.SaveData(fresh);
         }
 
-        int team = modded.GetCompound("PvPAdventureSSC").GetInt("team");
+        TagCompound character = modded.GetCompound("PvPAdventureSSC");
+        int team = character.GetInt("team");
         if (team is < 1 or > 5)
             team = Random.Shared.Next(1, 6);
         byte[] payload = Encode(new TagCompound { ["vanilla"] = vanilla, ["modded"] = modded, ["team"] = team });
@@ -117,7 +123,8 @@ internal sealed class ServerCharacters : ModSystem
         player.team = team;
         player.respawnTimer = 0;
         Main.player[slot] = player;
-        sessions.Add(slot, new CharacterSession(store, file));
+        sessions.Add(slot, new CharacterSession(store, file, ReadPosition(character)));
+        PvPAdventure.ImportSscStats(player, player.name, modded);
         Send(slot, payload);
     }
 
@@ -197,11 +204,63 @@ internal sealed class ServerCharacters : ModSystem
 
     public override void PostUpdateEverything()
     {
-        if (Main.netMode == NetmodeID.Server && Main.GameUpdateCount % (60 * 60) == 0)
-            foreach ((int slot, CharacterSession session) in sessions)
-                if (Netplay.Clients[slot].State == 10 && session.File.Player.active)
-                    Save(session);
+        if (Main.netMode != NetmodeID.Server)
+            return;
+
+        foreach ((int slot, CharacterSession session) in sessions)
+        {
+            Player player = session.File.Player;
+            if (Netplay.Clients[slot].State != 10 || !player.active)
+                continue;
+
+            if (!session.Joined)
+            {
+                session.Joined = true;
+                RestorePosition(player, session.SavedPosition);
+            }
+
+            if (Main.GameUpdateCount % (60 * 60) == 0)
+                Save(session);
+        }
     }
+
+    private static Vector2? ReadPosition(TagCompound character)
+    {
+        if (!character.ContainsKey("posX") || !character.ContainsKey("posY") ||
+            character.GetInt("worldId") != Main.worldID || character.GetString("worldName") != Main.worldName)
+            return null;
+
+        Vector2 position = new(character.GetFloat("posX"), character.GetFloat("posY"));
+        return float.IsFinite(position.X) && float.IsFinite(position.Y) ? position : null;
+    }
+
+    private static void RestorePosition(Player player, Vector2? savedPosition)
+    {
+        if (player.dead)
+            return;
+
+        Vector2 position;
+        if (ModContent.GetInstance<GameManager>().CurrentPhase == GameManager.Phase.Waiting)
+            position = new(Main.spawnTileX * 16f + 8f - player.width * 0.5f, Main.spawnTileY * 16f - player.height);
+        else if (savedPosition is { } saved && IsUsablePosition(player, saved))
+            position = saved;
+        else
+            return;
+
+        TravelSectionSyncSystem.PrepareTeleport(player.whoAmI, position);
+        player.velocity = Vector2.Zero;
+        player.Teleport(position, TeleportationStyleID.RecallPotion);
+        player.fallStart = (int)(position.Y / 16f);
+        NetMessage.SendData(MessageID.TeleportEntity, number: 0, number2: player.whoAmI,
+            number3: position.X, number4: position.Y, number5: TeleportationStyleID.RecallPotion);
+    }
+
+    private static bool IsUsablePosition(Player player, Vector2 position) =>
+        float.IsFinite(position.X) && float.IsFinite(position.Y) &&
+        position.X >= 16 && position.Y >= 16 &&
+        position.X + player.width < (Main.maxTilesX - 1) * 16f &&
+        position.Y + player.height < (Main.maxTilesY - 1) * 16f &&
+        !Collision.SolidCollision(position, player.width, player.height);
 
     public override void PreSaveAndQuit()
     {
@@ -232,11 +291,23 @@ internal sealed class ServerCharacters : ModSystem
 
     private void Save(CharacterSession session)
     {
+        if (!session.Joined)
+            return;
+
         try
         {
             Player player = session.File.Player;
             TagCompound modded = PlayerIO.SaveData(player);
-            modded["PvPAdventureSSC"] = new TagCompound { ["team"] = player.team };
+            TagCompound character = new() { ["team"] = player.team };
+            if (!player.dead && IsUsablePosition(player, player.position))
+            {
+                character["posX"] = player.position.X;
+                character["posY"] = player.position.Y;
+                character["worldId"] = Main.worldID;
+                character["worldName"] = Main.worldName;
+            }
+            modded["PvPAdventureSSC"] = character;
+            PvPAdventure.ExportSscStats(player, player.name, modded);
             session.Store.Save(session.File, modded);
         }
         catch (Exception ex)

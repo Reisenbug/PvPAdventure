@@ -104,7 +104,7 @@ public class PvPAdventure : Mod
         };
     }
 
-    private static bool ImportSscStats(Player player, string characterKey, TagCompound root)
+    internal static bool ImportSscStats(Player player, string characterKey, TagCompound root)
     {
         if (Main.netMode == Terraria.ID.NetmodeID.MultiplayerClient || !root.ContainsKey("ErkySSC"))
             return true;
@@ -129,7 +129,7 @@ public class PvPAdventure : Mod
         return true;
     }
 
-    private static bool ExportSscStats(Player player, string characterKey, TagCompound root)
+    internal static bool ExportSscStats(Player player, string characterKey, TagCompound root)
     {
         if (Main.netMode == Terraria.ID.NetmodeID.MultiplayerClient)
             return true;
