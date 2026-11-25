@@ -14,10 +14,16 @@ public class IncreasedRainSystem : ModSystem
 {
     private int rainCheckTimer = 0;
     private const int RainCheckInterval = 60;
+    private double lastWorldTime = -1;
 
     public override void PostUpdateWorld()
     {
         if (Main.netMode == NetmodeID.MultiplayerClient)
+            return;
+
+        bool timeIsProgressing = lastWorldTime >= 0 && Main.time != lastWorldTime;
+        lastWorldTime = Main.time;
+        if (!timeIsProgressing)
             return;
 
         rainCheckTimer++;
@@ -40,8 +46,7 @@ public class IncreasedRainSystem : ModSystem
     {
         Main.StartRain();
 
-        // Set a reasonable rain duration
-        Main.rainTime = Main.rand.Next(18000, 54000); // 5-15 minutes
+        Main.rainTime = 72000;
         Main.maxRaining = Main.rand.NextFloat(0.3f, 0.9f);
 
         // Sync to clients in multiplayer
