@@ -11,7 +11,7 @@ using Terraria.GameContent.Achievements;
 using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.ModLoader.IO;
-using Terraria.Net.Sockets;
+using Terraria.Net;
 
 namespace PvPAdventure.Common.Fishing;
 
