@@ -71,7 +71,15 @@ internal sealed class ServerCharacters : ModSystem
 
         SSCConfig config = ModContent.GetInstance<SSCConfig>();
         if (!config.IsSSCEnabled)
+        {
+            Player player = Main.player[playerNumber];
+            if (player.team == 0)
+            {
+                player.team = Random.Shared.Next(1, 6);
+                NetMessage.SendData(MessageID.PlayerTeam, playerNumber, number: playerNumber);
+            }
             return false;
+        }
 
         try
         {
@@ -102,6 +110,7 @@ internal sealed class ServerCharacters : ModSystem
             {
                 name = joining.name,
                 hair = joining.hair,
+                hairDye = joining.hairDye,
                 skinVariant = joining.skinVariant,
                 hairColor = joining.hairColor,
                 eyeColor = joining.eyeColor,
@@ -111,6 +120,8 @@ internal sealed class ServerCharacters : ModSystem
                 pantsColor = joining.pantsColor,
                 shoeColor = joining.shoeColor
             };
+            Array.Copy(joining.hideVisibleAccessory, fresh.hideVisibleAccessory, fresh.hideVisibleAccessory.Length);
+            fresh.hideMisc = joining.hideMisc;
             StartingItems.Apply(fresh);
             int life = Math.Clamp(config.StartLife, 100, 500) - 100;
             fresh.ConsumedLifeCrystals = Math.Min(life / 20, Player.LifeCrystalMax);
