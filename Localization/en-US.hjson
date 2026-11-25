@@ -1405,6 +1405,44 @@ Mods: {
 					Tooltip: ""
 				}
 			}
+
+			SSCConfig: {
+				DisplayName: Server-side Characters
+
+				IsSSCEnabled: {
+					Label: Enable server-side characters
+					Tooltip: ""
+				}
+
+				StartLife: {
+					Label: Start Life
+					Tooltip: ""
+				}
+
+				StartMana: {
+					Label: Start Mana
+					Tooltip: ""
+				}
+
+				StartItems: {
+					Label: Start Items
+					Tooltip: ""
+				}
+			}
+
+			StartingItem: {
+				Tooltip: ""
+
+				Item: {
+					Label: Item
+					Tooltip: ""
+				}
+
+				Stack: {
+					Label: Stack
+					Tooltip: ""
+				}
+			}
 		}
 
 		Tiles.LockedLihzahrdChest.MapEntry: Mods.PvPAdventure.Tiles.LockedLihzahrdChest.MapEntry

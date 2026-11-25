@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request, workflow_dispatch]
 
 env:
-  TML_VERSION: v2026.08.3.0
+  TML_VERSION: v2026.09.3.1
   Configuration: Release
 
 jobs:
@@ -21,83 +21,6 @@ jobs:
         with:
           path: PvPAdventure
           persist-credentials: false
-
-      - name: Read dependencies
-        id: dependencies
-        run: |
-          $dependencies = Get-Content PvPAdventure/.github/dependencies.json -Raw | ConvertFrom-Json
-          foreach ($dependency in $dependencies.PSObject.Properties) {
-            $name = $dependency.Name.ToLowerInvariant()
-            "${name}_repository=$($dependency.Value.repository)" >> $env:GITHUB_OUTPUT
-            "${name}_ref=$($dependency.Value.ref)" >> $env:GITHUB_OUTPUT
-          }
-
-      - name: Validate dependency access
-        env:
-          DEPENDENCIES_READ_TOKEN: ${{ secrets.DEPENDENCIES_READ_TOKEN }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:DEPENDENCIES_READ_TOKEN)) {
-            throw "Add DEPENDENCIES_READ_TOKEN with Contents read access to PylonTeam/Pylon, PylonTeam/ErkySSC, PylonTeam/PvPFramework and PylonTeam/PylonMatch."
-          }
-          $headers = @{
-            Authorization = "Bearer $env:DEPENDENCIES_READ_TOKEN"
-            Accept = 'application/vnd.github+json'
-          }
-          $dependencies = Get-Content PvPAdventure/.github/dependencies.json -Raw | ConvertFrom-Json
-          foreach ($dependency in $dependencies.PSObject.Properties) {
-            $repository = $dependency.Value.repository
-            $ref = [Uri]::EscapeDataString($dependency.Value.ref)
-            try {
-              # Resolving a commit requires Contents read access, just like checkout.
-              $null = Invoke-RestMethod -Uri "$env:GITHUB_API_URL/repos/$repository/commits/$ref" -Headers $headers
-            } catch {
-              $status = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'network error' }
-              throw "Cannot read $repository at '$($dependency.Value.ref)' ($status). Check that the ref exists and DEPENDENCIES_READ_TOKEN is unexpired, has Contents: read for this repository, and is approved by PylonTeam. For a fine-grained PAT, set resource owner to PylonTeam and select every repository in .github/dependencies.json. Update the Actions secret if the token was replaced."
-            }
-            Write-Host "Dependency access verified: $repository at '$($dependency.Value.ref)'."
-          }
-
-      - name: Checkout Pylon
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ steps.dependencies.outputs.pylon_repository }}
-          ref: ${{ steps.dependencies.outputs.pylon_ref }}
-          token: ${{ secrets.DEPENDENCIES_READ_TOKEN }}
-          persist-credentials: false
-          path: Pylon
-
-      - name: Checkout ErkySSC
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ steps.dependencies.outputs.erkyssc_repository }}
-          ref: ${{ steps.dependencies.outputs.erkyssc_ref }}
-          token: ${{ secrets.DEPENDENCIES_READ_TOKEN }}
-          persist-credentials: false
-          path: ErkySSC
-
-      - name: Checkout PvPFramework
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ steps.dependencies.outputs.pvpframework_repository }}
-          ref: ${{ steps.dependencies.outputs.pvpframework_ref }}
-          token: ${{ secrets.DEPENDENCIES_READ_TOKEN }}
-          persist-credentials: false
-          path: PvPFramework
-
-      - name: Checkout PylonMatch
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ steps.dependencies.outputs.pylonmatch_repository }}
-          ref: ${{ steps.dependencies.outputs.pylonmatch_ref }}
-          token: ${{ secrets.DEPENDENCIES_READ_TOKEN }}
-          persist-credentials: false
-          path: PylonMatch
-
-      - name: Log resolved revisions
-        run: |
-          foreach ($mod in 'PvPAdventure', 'Pylon', 'ErkySSC', 'PvPFramework', 'PylonMatch') {
-            Write-Host "${mod}: $(git -C $mod rev-parse HEAD)"
-          }
 
       - name: Set up tModLoader
         run: |
@@ -122,7 +45,7 @@ jobs:
         working-directory: PvPAdventure
         run: dotnet restore PvPAdventure.csproj -p:Configuration=Release --disable-parallel -m:1 -nr:false
 
-      - name: Build mod and dependencies
+      - name: Build standalone mod
         working-directory: PvPAdventure
         run: >
           dotnet build PvPAdventure.csproj
@@ -133,6 +56,10 @@ jobs:
           -p:BuildInParallel=false
           --verbosity normal
           "-p:ExtraBuildModFlags=-tmlsavedirectory $env:GITHUB_WORKSPACE\tModLoaderSave"
+
+      - name: Run portal regressions
+        working-directory: PvPAdventure
+        run: dotnet run --project Tests/Portals
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

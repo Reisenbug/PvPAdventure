@@ -218,6 +218,8 @@ internal sealed class ServerCharacters : ModSystem
                     Save(session);
     }
 
+    public override void LoadWorldData(TagCompound tag) { }
+
     internal void Disconnect(Player player)
     {
         if (Main.netMode == NetmodeID.Server && sessions.TryGetValue(player.whoAmI, out CharacterSession session) &&
