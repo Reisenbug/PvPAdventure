@@ -30,9 +30,24 @@ internal sealed class ServerCharacters : ModSystem
     }
     private static ServerCharacters Instance => ModContent.GetInstance<ServerCharacters>();
 
-    public override void Load() => On_Player.InternalSavePlayerFile += SaveLocalFile;
+    public override void Load()
+    {
+        On_Player.InternalSavePlayerFile += SaveLocalFile;
+        On_RemoteClient.Reset += SaveBeforeClientReset;
+    }
 
-    public override void Unload() => On_Player.InternalSavePlayerFile -= SaveLocalFile;
+    public override void Unload()
+    {
+        On_Player.InternalSavePlayerFile -= SaveLocalFile;
+        On_RemoteClient.Reset -= SaveBeforeClientReset;
+    }
+
+    private void SaveBeforeClientReset(On_RemoteClient.orig_Reset original, RemoteClient client)
+    {
+        if (Main.netMode == NetmodeID.Server && sessions.Remove(client.Id, out CharacterSession session))
+            Save(session);
+        original(client);
+    }
 
     private void SaveLocalFile(On_Player.orig_InternalSavePlayerFile original, PlayerFileData file)
     {
@@ -51,6 +66,7 @@ internal sealed class ServerCharacters : ModSystem
             if (ReferenceEquals(previous.File.Player, Main.player[playerNumber]))
                 return false;
             sessions.Remove(playerNumber);
+            Save(previous);
         }
 
         SSCConfig config = ModContent.GetInstance<SSCConfig>();
