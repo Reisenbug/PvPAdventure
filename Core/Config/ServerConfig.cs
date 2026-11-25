@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using Terraria;
+using Terraria.ID;
 using Terraria.Localization;
 using Terraria.ModLoader.Config;
 
@@ -12,6 +13,27 @@ namespace PvPAdventure.Core.Config;
 public sealed class ServerConfig : ModConfig
 {
     public override ConfigScope Mode => ConfigScope.ServerSide;
+
+    [Expand(false, false)]
+    public List<ItemDefinition> PreventUse { get; set; } =
+    [
+        new(ItemID.RecallPotion), new(ItemID.WormholePotion), new(ItemID.TeleportationPotion),
+        new(ItemID.PotionOfReturn), new(ItemID.MagicMirror), new(ItemID.IceMirror),
+        new(ItemID.Teleporter), new(ItemID.MagicConch), new(ItemID.DemonConch),
+        new(ItemID.CellPhone), new(ItemID.Shellphone), new(ItemID.ShellphoneSpawn),
+        new(ItemID.ShellphoneOcean), new(ItemID.ShellphoneHell), new(ItemID.ShellphoneDummy)
+    ];
+
+    [Expand(false, false)]
+    public Dictionary<ItemDefinition, ChestItemReplacement> ChestItemReplacements { get; set; } = new()
+    {
+        [new(ItemID.MagicConch)] = new() { Items = [new() { Item = new(ItemID.SandstorminaBottle) }] }
+    };
+
+    public sealed class ChestItemReplacement
+    {
+        public List<ConfigItem> Items { get; set; } = [];
+    }
 
     [Header("Points")]
     [BackgroundColor(150, 104, 38)]
