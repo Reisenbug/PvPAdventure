@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using PvPAdventure.Common.GameTimer;
 using PvPAdventure.Common.SpawnSelector;
+using PvPAdventure.Common.Spectator.Drawers;
 using PvPAdventure.Core.Config;
 using PvPAdventure.Core.Net;
 using Terraria;
@@ -246,8 +247,25 @@ public sealed class PortalSystem : ModSystem
             Main.npc[index].netUpdate = true;
             if (Main.netMode == NetmodeID.Server)
                 NetMessage.SendData(MessageID.SyncNPC, number: index);
+            AnnouncePortalOpened(player);
             Log.Info($"Portal created: owner={player.whoAmI}, team={player.team}, center={position}, npc={index}");
         }
+    }
+
+    private static void AnnouncePortalOpened(Player owner)
+    {
+        string biome = BiomeHelper.GetBiomeVisual(owner).BestiaryBiome.GetDisplayNameKey();
+        var message = NetworkText.FromFormattable("{0} has opened a portal in {1}.",
+            owner.name, NetworkText.FromKey(biome));
+        if (Main.netMode == NetmodeID.SinglePlayer)
+        {
+            Main.NewText(message.ToString(), Color.White);
+            return;
+        }
+
+        foreach (Player player in Main.ActivePlayers)
+            if (player.whoAmI == owner.whoAmI || owner.team != 0 && player.team == owner.team)
+                ChatHelper.SendChatMessageToClient(message, Color.White, player.whoAmI);
     }
 
     internal static bool Teleport(Player player, NPC portal)
