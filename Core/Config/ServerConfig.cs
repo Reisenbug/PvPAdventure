@@ -1,12 +1,11 @@
+using PvPAdventure.Common.Security;
 using PvPAdventure.Core.Config.ConfigElements;
 using PvPFramework.Core.Configs.ConfigElements;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using Terraria;
 using Terraria.ID;
 using Terraria.Localization;
-using Terraria.ModLoader;
 using Terraria.ModLoader.Config;
 
 namespace PvPAdventure.Core.Config;
@@ -110,38 +109,8 @@ public sealed class ServerConfig : ModConfig
         public int Price;
     }
 
-    public override bool AcceptClientChanges(ModConfig pendingConfig, int whoAmI, ref NetworkText message)
-    {
-        if (Main.netMode == NetmodeID.SinglePlayer)
-            return true;
-
-        if (!ModLoader.TryGetMod("ErkySSC", out Mod erkySsc))
-        {
-            message = NetworkText.FromLiteral("Server config changes require ErkySSC admin permissions.");
-            return false;
-        }
-
-        bool isAdmin = false;
-
-        try
-        {
-            if (erkySsc.Call("IsAdmin", whoAmI) is bool value)
-                isAdmin = value;
-        }
-        catch (Exception exception)
-        {
-            Log.Chat($"Failed to check ErkySSC admin permission for config change. whoAmI={whoAmI}, error={exception.Message}");
-        }
-
-        if (!isAdmin)
-        {
-            message = NetworkText.FromLiteral("You must be an ErkySSC admin to modify this config.");
-            return false;
-        }
-
-        message = NetworkText.FromLiteral("Saved!");
-        return true;
-    }
+    public override bool AcceptClientChanges(ModConfig pendingConfig, int whoAmI, ref NetworkText message) =>
+        AdminPermissions.AcceptConfig(whoAmI, ref message);
 
     public sealed class PointsConfig
     {

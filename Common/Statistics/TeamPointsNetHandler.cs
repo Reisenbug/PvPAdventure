@@ -1,4 +1,4 @@
-using ErkySSC.Common.Security;
+using PvPAdventure.Common.Security;
 using PvPAdventure.Core.Net;
 using PylonMatch.Common.Game;
 using System;
@@ -10,12 +10,12 @@ using Terraria.ModLoader;
 
 namespace PvPAdventure.Common.Statistics;
 
-/// <summary>Adventure owns point edits; PylonMatch supplies match permissions and SSC retains admission checks.</summary>
+/// <summary>Validates and applies administrator point edits.</summary>
 internal static class TeamPointsNetHandler
 {
     public static void Set(Team team, int value)
     {
-        if (Main.gameMenu || Main.LocalPlayer?.active != true || !GameAccess.CanManageLocal ||
+        if (Main.gameMenu || Main.LocalPlayer?.active != true || !AdminPermissions.RequireLocal() ||
             !GameSession.Instance.IsSelected("pvpa") || !ValidTeam(team)) return;
         if (Main.netMode != NetmodeID.MultiplayerClient)
         {
@@ -32,8 +32,7 @@ internal static class TeamPointsNetHandler
     public static void HandlePacket(BinaryReader reader, int sender)
     {
         if (Main.netMode != NetmodeID.Server || sender < 0 || sender >= Main.maxPlayers ||
-            !GameAccess.CanManage(sender) || !GameSession.Instance.IsSelected("pvpa") ||
-            JoinAdmissionSystem.RequiresActiveFeatureGate(sender) && !JoinAdmissionSystem.IsActive(sender)) return;
+            !AdminPermissions.HasAccess(sender) || !GameSession.Instance.IsSelected("pvpa")) return;
         Team team = (Team)reader.ReadByte();
         int value = reader.ReadInt32();
         if (ValidTeam(team)) ModContent.GetInstance<PointsManager>().SetTeamPoints(team, value);

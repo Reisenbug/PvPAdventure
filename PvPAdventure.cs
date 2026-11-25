@@ -63,6 +63,10 @@ public class PvPAdventure : Mod
                 Common.Fishing.AnglerQuestSystem.HandlePacket(reader, whoAmI);
                 break;
 
+            case AdventurePacketIdentifier.AdminPermissions:
+                Common.Security.AdminPermissions.Handle(reader, whoAmI);
+                break;
+
             default:
                 Log.Warn($"[Packet] Unknown packet id: {(byte)id} ({id})");
                 break;

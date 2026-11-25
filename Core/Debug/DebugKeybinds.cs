@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using PvPAdventure.Common.Bounties;
 using PvPAdventure.Common.Game;
+using PvPAdventure.Common.Security;
 using PvPAdventure.Common.Travel.UI;
 using PylonMatch.Common.Game;
 using PvPAdventure.Core.Utilities;
@@ -80,7 +81,7 @@ internal sealed class DebugKeybinds : ModSystem
             return;
         }
 
-        if (!ErkySSC.Common.AdminTools.AdminUISystem.CanUseAdminUI()) return;
+        if (!AdminPermissions.RequireLocal()) return;
         GameSessionNetHandler.Start(GameSession.MaxDurationTicks, StartGameCountdownSeconds);
 
         Log.Chat("Shift+NumPad2: starting a match.");
@@ -97,7 +98,7 @@ internal sealed class DebugKeybinds : ModSystem
             return;
         }
 
-        if (!ErkySSC.Common.AdminTools.AdminUISystem.CanUseAdminUI()) return;
+        if (!AdminPermissions.RequireLocal()) return;
         GameSessionNetHandler.End();
 
         Log.Chat("Shift+NumPad3: ending the match or active countdown.");

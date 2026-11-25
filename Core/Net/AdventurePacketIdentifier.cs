@@ -13,4 +13,5 @@ public enum AdventurePacketIdentifier : byte
     ShakingChest,
     TeamPoints,
     AnglerQuest,
+    AdminPermissions,
 }
