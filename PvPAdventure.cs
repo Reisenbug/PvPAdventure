@@ -75,6 +75,10 @@ public class PvPAdventure : Mod
                 EndScreenService.Receive(reader);
                 break;
 
+            case AdventurePacketIdentifier.ServerCharacter:
+                Common.SSC.ServerCharacters.Receive(reader);
+                break;
+
             default:
                 Log.Warn($"[Packet] Unknown packet id: {(byte)id} ({id})");
                 break;

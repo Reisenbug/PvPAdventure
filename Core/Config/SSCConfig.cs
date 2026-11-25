@@ -10,6 +10,17 @@ public sealed class SSCConfig : ModConfig
 {
     public override ConfigScope Mode => ConfigScope.ServerSide;
 
+    [DefaultValue(true)]
+    public bool IsSSCEnabled { get; set; } = true;
+
+    [DefaultValue(200)]
+    [Range(100, 500)]
+    public int StartLife { get; set; } = 200;
+
+    [DefaultValue(40)]
+    [Range(20, 200)]
+    public int StartMana { get; set; } = 40;
+
     public List<StartingItem> StartItems { get; set; } = [];
 
     public sealed class StartingItem

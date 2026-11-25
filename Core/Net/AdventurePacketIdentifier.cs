@@ -16,4 +16,5 @@ public enum AdventurePacketIdentifier : byte
     AdminPermissions,
     MatchControl,
     MatchResults,
+    ServerCharacter,
 }

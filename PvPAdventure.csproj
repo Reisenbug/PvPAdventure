@@ -19,10 +19,6 @@
 		<NoWarn>$(NoWarn);CS0436</NoWarn>
 	</PropertyGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\ErkySSC\ErkySSC.csproj" />
-	</ItemGroup>
-
 	<!-- Tomat supplies these in Debug; the standard build needs them explicitly. -->
 	<ItemGroup Condition="'$(Configuration)' != 'Debug'">
 		<PackageReference Include="Krafs.Publicizer" Version="2.3.0" PrivateAssets="all" ExcludeAssets="runtime" />
