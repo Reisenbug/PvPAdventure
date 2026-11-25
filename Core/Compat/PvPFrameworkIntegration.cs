@@ -23,19 +23,13 @@ public class PvPFrameworkIntegration : ModSystem
 {
     public override void Load()
     {
-        PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.BossDamageDealt += RecordBossDamage;
-
         ScoreboardPlayerInfoService.RowsProvider = BuildScoreboardInfoRows;
     }
 
     public override void Unload()
     {
-        PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.BossDamageDealt -= RecordBossDamage;
         ScoreboardPlayerInfoService.RowsProvider = null;
     }
-
-    private static void RecordBossDamage(Player player, uint damage, int itemType) =>
-        MatchStatsPlayer.RecordServerStat(player, MatchStatKey.BossDamageDealt, damage, itemType);
 
     private static IReadOnlyList<ScoreboardInfoRow> BuildScoreboardInfoRows(
         Player player,
@@ -114,26 +108,62 @@ public class PvPFrameworkIntegration : ModSystem
 // Awards team points for PvP kills that happen during a match.
 public class AdventureMatchPlayer : ModPlayer
 {
+    private const int AttributionTicks = 15 * 60;
+    private Player recentAttacker;
+    private ulong lastHit;
+    private string matchToken;
+
+    public override void OnHurt(Player.HurtInfo info)
+    {
+        if (Main.netMode == NetmodeID.MultiplayerClient || !info.PvP)
+            return;
+
+        GameManager game = ModContent.GetInstance<GameManager>();
+        Player attacker = GetOpponent(info.DamageSource.SourcePlayerIndex);
+        if (game.CurrentPhase != GameManager.Phase.Playing || attacker == null)
+            return;
+
+        recentAttacker = attacker;
+        lastHit = Main.GameUpdateCount;
+        matchToken = game.CurrentMatchToken;
+    }
+
     public override void Kill(double damage, int hitDirection, bool pvp, PlayerDeathReason damageSource)
     {
-        // Points are decided server-side, and only while a match is being played.
-        if (Main.netMode == NetmodeID.MultiplayerClient ||
-            ModContent.GetInstance<GameManager>().CurrentPhase != GameManager.Phase.Playing)
+        if (Main.netMode == NetmodeID.MultiplayerClient)
             return;
 
-        // Use the framework's attribution so team points and the scoreboard always credit the same
-        // player: the one who landed the killing blow, falling back to the last attacker only for
-        // indirect kills like DoTs or knockback into a hazard.
-        int killerId = Player.GetModPlayer<PvPFramework.Common.Combat.RecentDamagePlayer>()
-            .ResolveKiller(damageSource.SourcePlayerIndex);
+        GameManager game = ModContent.GetInstance<GameManager>();
+        if (game.CurrentPhase == GameManager.Phase.Playing)
+        {
+            Player killer = pvp ? GetOpponent(damageSource.SourcePlayerIndex) : null;
+            if (killer == null && recentAttacker is { dead: false } recent &&
+                matchToken == game.CurrentMatchToken && Main.GameUpdateCount - lastHit < AttributionTicks &&
+                ReferenceEquals(GetOpponent(recent.whoAmI), recent))
+                killer = recent;
 
-        if (killerId < 0 || killerId >= Main.maxPlayers || killerId == Player.whoAmI)
-            return;
+            if (killer != null)
+                ModContent.GetInstance<PointsManager>().AwardPlayerKillToTeam(killer, Player);
+        }
 
-        Player killer = Main.player[killerId];
-        if (killer?.active != true)
-            return;
-
-        ModContent.GetInstance<PointsManager>().AwardPlayerKillToTeam(killer, Player);
+        ClearRecentHits();
     }
+
+    public override void PlayerDisconnect() => ClearRecentHits();
+
+    private void ClearRecentHits()
+    {
+        recentAttacker = null;
+        foreach (Player player in Main.ActivePlayers)
+        {
+            AdventureMatchPlayer attribution = player.GetModPlayer<AdventureMatchPlayer>();
+            if (ReferenceEquals(attribution.recentAttacker, Player))
+                attribution.recentAttacker = null;
+        }
+    }
+
+    private Player GetOpponent(int slot) =>
+        Player.team != (int)Team.None && slot >= 0 && slot < Main.maxPlayers && slot != Player.whoAmI &&
+        Main.player[slot] is { active: true } player && player.team != (int)Team.None && player.team != Player.team
+            ? player : null;
 }
