@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using PvPAdventure.Common.Game;
 using PvPAdventure.Common.Travel.UI;
 using ReLogic.Graphics;
 using Terraria;
@@ -167,11 +168,7 @@ public class TravelTeleportHooks : ModSystem
 
         Player p = Main.LocalPlayer;
 
-        int seconds = (int)(1f + p.respawnTimer / 60f);
-        if (p.respawnTimer <= 2 
-            //&& TravelRegionSystem.CanUseTravelUI(p)
-            )
-            seconds = 0;
+        int seconds = MatchRespawnSystem.GetDisplayedSeconds(p.respawnTimer);
 
         float y = -60f;
 

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using PvPAdventure.Common.Game;
 using PvPAdventure.Common.Travel.Portals;
 using PvPAdventure.Core.Utilities;
 using Terraria;
@@ -81,7 +82,7 @@ internal sealed class UITravelPlayerCard : UIPanel
 
         sb.Draw(texture, skullCenter, null, Color.White * 0.5f, 0f, texture.Size() * 0.5f, 1.44f, SpriteEffects.None, 0f);
 
-        string seconds = respawnTimer <= 2 ? "0" : (respawnTimer / 60 + 1).ToString();
+        string seconds = MatchRespawnSystem.GetDisplayedSeconds(respawnTimer).ToString();
         Vector2 size = FontAssets.DeathText.Value.MeasureString(seconds);
         Vector2 pos = new(rect.X + (rect.Width - size.X) * 0.5f, rect.Y + (rect.Height - size.Y) * 0.5f + 10f);
 
