@@ -1,7 +1,6 @@
 using PvPAdventure.Common.Game.GameReporters;
 using PvPAdventure.Common.Game.StatTrackers;
 using PvPAdventure.Common.Statistics;
-using PylonMatch.Common.EndScreen;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,14 +11,24 @@ using Terraria.ModLoader;
 
 namespace PvPAdventure.Common.Game;
 
+internal sealed class EndScreenSummary
+{
+    internal List<TeamScoreEntry> Scores { get; } = [];
+    internal List<EndScreenPlayerStats> Players { get; } = [];
+}
+
+internal readonly record struct TeamScoreEntry(Team Team, int Score);
+
+internal sealed record EndScreenPlayerStats(byte PlayerIndex, Team Team, string Name, int Kills, int Deaths,
+    uint DamageDealt, uint DamageTaken, uint TilesMined, uint TilesPlaced, uint ConsumablesUsed, uint LavaDeaths,
+    uint FoodEaten, uint BossDamageDealt, uint PortalKills, uint DifferentWeaponsUsed, uint LostHoney,
+    string RoleTitle = "", string RoleValue = "");
+
 internal static class AdventureEndScreenExtension
 {
-    public static EndScreenSummary CreateSummary(string presentationKey)
+    public static EndScreenSummary CreateSummary()
     {
-        EndScreenSummary summary = new()
-        {
-            PresentationKey = presentationKey ?? ""
-        };
+        EndScreenSummary summary = new();
         PointsManager points = ModContent.GetInstance<PointsManager>();
 
         IEnumerable<Player> activePlayers = Main.player.Where(player => player?.active == true);

@@ -21,7 +21,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\ErkySSC\ErkySSC.csproj" />
-		<ProjectReference Include="..\PylonMatch\PylonMatch.csproj" />
 	</ItemGroup>
 
 	<!-- Tomat supplies these in Debug; the standard build needs them explicitly. -->

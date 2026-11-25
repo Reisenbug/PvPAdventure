@@ -1,7 +1,6 @@
 using PvPAdventure.Common.Game.MatchReplays;
 using PvPAdventure.Common.Game.StatTrackers;
 using PvPAdventure.Common.Statistics;
-using PylonMatch.Common.EndScreen;
 using System;
 using Terraria;
 using Terraria.ID;
@@ -37,8 +36,7 @@ internal sealed class AdventureMatchReportingSystem : ModSystem
         matchToken = null;
         try
         {
-            // Framework has already respawned/staged players and synchronized Waiting.
-            pendingEndScreen = AdventureEndScreenExtension.CreateSummary(token);
+            pendingEndScreen = AdventureEndScreenExtension.CreateSummary();
             presentAfter = Main.GameUpdateCount + 20;
         }
         catch (Exception ex) { Log.Error($"Failed to build the Adventure end screen: {ex}"); }
@@ -64,13 +62,6 @@ internal sealed class AdventureMatchReportingSystem : ModSystem
         ClearPending();
         try { EndScreenService.Present(summary); }
         catch (Exception ex) { Log.Error($"Failed to present the Adventure end screen: {ex}"); }
-    }
-
-    public override void PostUpdateEverything()
-    {
-        GameManager game = ModContent.GetInstance<GameManager>();
-        if (!Main.dedServ && game.CurrentPhase == GameManager.Phase.Playing && Main.GameUpdateCount % 30 == 0)
-            EndScreenService.CaptureLivePlayers();
     }
 
     private void ClearPending() { pendingEndScreen = null; presentAfter = 0; }
