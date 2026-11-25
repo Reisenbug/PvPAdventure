@@ -23,8 +23,6 @@ public class PvPFrameworkIntegration : ModSystem
 {
     public override void Load()
     {
-        // Award team points when a team lands the killing blow on a boss/scoring NPC.
-        PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.NpcKilledByPlayer += AwardNpcKill;
         PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.BossDamageDealt += RecordBossDamage;
 
         ScoreboardPlayerInfoService.RowsProvider = BuildScoreboardInfoRows;
@@ -32,13 +30,9 @@ public class PvPFrameworkIntegration : ModSystem
 
     public override void Unload()
     {
-        PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.NpcKilledByPlayer -= AwardNpcKill;
         PvPFramework.Common.Combat.TeamBoss.TeamBossNPC.BossDamageDealt -= RecordBossDamage;
         ScoreboardPlayerInfoService.RowsProvider = null;
     }
-
-    private static void AwardNpcKill(Player player, NPC npc) =>
-        ModContent.GetInstance<PointsManager>().AwardNpcKillToTeam((Team)player.team, npc);
 
     private static void RecordBossDamage(Player player, uint damage, int itemType) =>
         MatchStatsPlayer.RecordServerStat(player, MatchStatKey.BossDamageDealt, damage, itemType);

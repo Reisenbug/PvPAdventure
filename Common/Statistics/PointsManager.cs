@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using PvPAdventure.Common.Bounties;
 using PvPAdventure.Common.Game.StatTrackers;
-using BossDisplaySettings = PvPFramework.Common.NPCs.BossDisplaySettings;
 using PvPAdventure.Common.NPCs;
 using PvPAdventure.Core.Config;
 using PylonMatch.Common.Scoreboard;
@@ -26,6 +25,15 @@ namespace PvPAdventure.Common.Statistics;
 [Autoload(Side = ModSide.Both)]
 public class PointsManager : ModSystem
 {
+    private static readonly short[] BossDisplayOrder =
+    [
+        NPCID.KingSlime, NPCID.EyeofCthulhu, NPCID.EaterofWorldsHead, NPCID.BrainofCthulhu,
+        NPCID.QueenBee, NPCID.SkeletronHead, NPCID.Deerclops, NPCID.WallofFlesh,
+        NPCID.QueenSlimeBoss, NPCID.Retinazer, NPCID.TheDestroyer, NPCID.SkeletronPrime,
+        NPCID.Plantera, NPCID.Golem, NPCID.DukeFishron, NPCID.HallowBoss,
+        NPCID.CultistBoss, NPCID.MoonLordCore
+    ];
+
     public readonly Dictionary<Team, int> _points = new();
     private readonly Dictionary<Team, ISet<short>> _downedNpcs = new();
 
@@ -343,20 +351,8 @@ public class PointsManager : ModSystem
             const int bossHeadTeamIconVisualSeparatorYOffset = 28;
             var teamIconsTexture = TextureAssets.Pvp[1].Value;
 
-            var bosses = BossDisplaySettings.Order
-                // Remove invalid/unloaded NPCs
-                .Where(id => id != -1)
-                .ToList();
-            var numberOfBosses = bosses.Count;
-
-            var onlyDisplayWorldEvilBoss = BossDisplaySettings.OnlyDisplayWorldEvilBoss &&
-                                           bosses.Contains(NPCID.EaterofWorldsHead) &&
-                                           bosses.Contains(NPCID.BrainofCthulhu);
-
-            // We might have both evil bosses in this list, but we actually just want to display the one that
-            // pertains to this world.
-            if (onlyDisplayWorldEvilBoss)
-                numberOfBosses -= 1;
+            var bosses = BossDisplayOrder;
+            int numberOfBosses = bosses.Length - 1;
 
             // FIXME: The left and right padding visually based on the team icons is somewhat off
             //        (too much right padding from team icon)
@@ -386,12 +382,9 @@ public class PointsManager : ModSystem
 
             foreach (var bossId in bosses)
             {
-                if (onlyDisplayWorldEvilBoss)
-                {
-                    if (bossId == NPCID.BrainofCthulhu && !WorldGen.crimson ||
-                        bossId == NPCID.EaterofWorldsHead && WorldGen.crimson)
-                        continue;
-                }
+                if (bossId == NPCID.BrainofCthulhu && !WorldGen.crimson ||
+                    bossId == NPCID.EaterofWorldsHead && WorldGen.crimson)
+                    continue;
 
                 // FIXME: Stupid hack for Golem head texture
                 var headId = NPCID.Sets.BossHeadTextures[bossId == NPCID.Golem ? NPCID.GolemHead : bossId];
