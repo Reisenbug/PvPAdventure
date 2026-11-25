@@ -28,7 +28,6 @@ public class UISpawnState : UIState
     public UITextPanel<string> TitlePanel => chooseYourSpawnPanel;
 
     // UI components which are a part of backgroundPanel
-    private UIRandomTeleportPanel randomPanel;
     private UIMyBedButton myBedPanel;
     private UIWorldSpawnPanel worldSpawnPanel;
     private readonly List<UISpawnCharacter> playerItems = []; // list of teammate player UI items
@@ -171,17 +170,11 @@ public class UISpawnState : UIState
         const float HorizontalPadding = 8f; // panel padding
         const float VerticalPadding = 10f; // panel padding
 
-        int gaps = 1;
-        if (playerCount > 0)
-        {
-            gaps += playerCount - 1;
-            gaps += 1;
-        }
+        int gaps = playerCount + 1;
 
         float contentWidth =
             itemHeight + itemHeight +
             (playerCount * itemWidth) +
-            itemHeight +
             (gaps * Spacing);
 
         float panelWidth = contentWidth + HorizontalPadding * 2f + HorizontalPadding;
@@ -226,15 +219,6 @@ public class UISpawnState : UIState
                 x += Spacing;
         }
 
-        if (playerCount > 0)
-            x += Spacing;
-
-        // Random
-        randomPanel = new UIRandomTeleportPanel(itemHeight);
-        randomPanel.Left.Set(x, 0f);
-        randomPanel.Top.Set(y, 0f);
-        backgroundPanel.Append(randomPanel);
-
         backgroundPanel.Recalculate();
         backgroundPanel.RecalculateChildren();
     }
@@ -254,14 +238,7 @@ public class UISpawnState : UIState
         if (dims.Width <= 1f || dims.Height <= 1f)
             return true;
 
-        if (randomPanel == null)
-            return true;
-
         if (worldSpawnPanel == null)
-            return true;
-
-        var randomDims = randomPanel.GetDimensions();
-        if (randomDims.Width <= 0f || randomDims.Height <= 0f)
             return true;
 
         var local = Main.LocalPlayer;

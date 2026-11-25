@@ -96,29 +96,6 @@ public class UISpawnCharacter : UIPanel
         SetPadding(6f);
     }
 
-    public override void LeftClick(UIMouseEvent evt)
-    {
-        base.LeftClick(evt);
-
-        if (bedButton != null && bedButton.IsMouseHovering)
-            return;
-
-        //bool playing = ModContent.GetInstance<GameManager>().CurrentPhase == GameManager.Phase.Playing;
-        //if (!playing)
-            //return;
-
-        Player local = Main.LocalPlayer;
-        if (local == null || !local.active)
-            return;
-
-        // Only allow selecting valid teammates
-        if (!SpawnSystem.IsValidTeammateIndex(playerIndex))
-            return;
-
-        local.GetModPlayer<SpawnPlayer>()
-            .ToggleSelection(SpawnType.Teammate, playerIndex);
-    }
-
     public override void Update(GameTime gameTime)
     {
         base.Update(gameTime);

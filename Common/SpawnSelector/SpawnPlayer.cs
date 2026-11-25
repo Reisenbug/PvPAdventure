@@ -236,6 +236,9 @@ public class SpawnPlayer : ModPlayer
         normalizedType = requestedType;
         normalizedIdx = requestedIdx;
 
+        if (normalizedType is SpawnType.Random or SpawnType.Teammate)
+            normalizedType = SpawnType.None;
+
         if (normalizedType == SpawnType.None)
         {
             normalizedIdx = -1;

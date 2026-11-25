@@ -25,7 +25,6 @@ public class Keybinds : ModSystem
     public ModKeybind Dash { get; private set; }
     public ModKeybind ArenasMenu { get; private set; }
     public ModKeybind SpectateMenu { get; private set; }
-    public ModKeybind UseAdventureMirror { get; private set; }
     public ModKeybind StartGame { get; private set; }
 
     public override void Load()
@@ -36,7 +35,6 @@ public class Keybinds : ModSystem
         Dash = KeybindLoader.RegisterKeybind(Mod, "Dash", Keys.F);
         ArenasMenu = KeybindLoader.RegisterKeybind(Mod, "ArenasMenu", Keys.NumPad7);
         SpectateMenu = KeybindLoader.RegisterKeybind(Mod, "SpectateMenu", Keys.NumPad8);
-        UseAdventureMirror = KeybindLoader.RegisterKeybind(Mod, "UseAdventureMirror", Keys.G);
         StartGame = KeybindLoader.RegisterKeybind(Mod, "StartGame", Keys.F6);
     }
 }
@@ -98,12 +96,6 @@ internal class KeybindsPlayer : ModPlayer
             SpectatorUISystem.ToggleSpectateJoinUI();
         }
 
-        // Adventure mirror keybind
-        if (keybinds.UseAdventureMirror.JustPressed)
-        {
-            Log.Chat("Adventure mirror keybind pressed");
-            AdventureMirror.TryUse(Player);
-        }
     }
 
 }

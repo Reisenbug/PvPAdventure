@@ -65,7 +65,7 @@ internal class AdventureMirror : ModItem
     }
 
     #region Right click use
-    public override bool CanRightClick() => true;
+    public override bool CanRightClick() => false;
     public override bool AltFunctionUse(Player player) => false;
 
     public override void RightClick(Player player)
@@ -119,28 +119,7 @@ internal class AdventureMirror : ModItem
 
     #endregion
 
-    public override bool CanUseItem(Player player)
-    {
-        if (ModContent.GetInstance<GameManager>().CurrentPhase != GameManager.Phase.Playing)
-        {
-            Warning(player, "Mods.PvPAdventure.AdventureMirror.GameNotStarted");
-            return false;
-        }
-
-        if (player.GetModPlayer<SpawnPlayer>().IsPlayerInSpawnRegion())
-        {
-            Warning(player, "Mods.PvPAdventure.AdventureMirror.CannotUseInSpawn");
-            return false;
-        }
-
-        if (player.velocity.LengthSquared() > 0)
-        {
-            Warning(player, "Mods.PvPAdventure.AdventureMirror.CannotUseWhileMoving");
-            return false;
-        }
-
-        return true;
-    }
+    public override bool CanUseItem(Player player) => false;
 
     internal void CancelItemUse(Player player)
     {

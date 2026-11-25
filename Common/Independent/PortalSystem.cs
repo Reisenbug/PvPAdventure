@@ -211,14 +211,17 @@ public sealed class PortalSystem : ModSystem
 
     internal static bool CanTravelFrom(Player player)
     {
+        const float radiusSquared = 128 * 128;
         if (player.GetModPlayer<SpawnPlayer>().IsPlayerInSpawnRegion())
             return true;
-        if (player.SpawnX >= 0 && Player.CheckSpawn(player.SpawnX, player.SpawnY) &&
-            Vector2.DistanceSquared(player.Center, new Vector2(player.SpawnX * 16, player.SpawnY * 16)) < 128 * 128)
-            return true;
+        foreach (Player owner in Main.ActivePlayers)
+            if ((owner == player || player.team != 0 && owner.team == player.team) &&
+                owner.SpawnX >= 0 && owner.SpawnY >= 0 && Player.CheckSpawn(owner.SpawnX, owner.SpawnY) &&
+                Vector2.DistanceSquared(player.Center, new Vector2(owner.SpawnX * 16 + 8, owner.SpawnY * 16 + 8)) <= radiusSquared)
+                return true;
         foreach (NPC npc in Main.ActiveNPCs)
             if (npc.ModNPC is TeamPortal portal && portal.CanTravel(player) &&
-                Vector2.DistanceSquared(npc.Center, player.Center) < 128 * 128)
+                Vector2.DistanceSquared(npc.Center, player.Center) <= radiusSquared)
                 return true;
         return false;
     }
@@ -403,13 +406,14 @@ public sealed class PortalPlayer : ModPlayer
 
 public sealed class TeamPortal : ModNPC
 {
+    private static int PortalMaxHealth => NPC.downedPlantBoss ? 300 : Main.hardMode ? 150 : 50;
     public override string Texture => "PvPAdventure/Assets/Portals/Portal_NoTeam";
     public override void SetStaticDefaults() => Main.npcFrameCount[Type] = PortalVisuals.FrameCount;
     public override void SetDefaults()
     {
         NPC.width = 32;
         NPC.height = 48;
-        NPC.lifeMax = ModContent.GetInstance<IndependentConfig>().PortalLife;
+        NPC.lifeMax = PortalMaxHealth;
         NPC.noGravity = true;
         NPC.noTileCollide = true;
         NPC.knockBackResist = 0;
@@ -431,6 +435,12 @@ public sealed class TeamPortal : ModNPC
     public override bool CheckActive() => false;
     public override void AI()
     {
+        if (NPC.lifeMax != PortalMaxHealth)
+        {
+            NPC.lifeMax = PortalMaxHealth;
+            NPC.life = NPC.lifeMax;
+            NPC.netUpdate = true;
+        }
         NPC.velocity = Vector2.Zero;
         if (!Main.dedServ)
         {

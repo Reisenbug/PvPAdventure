@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using System.IO;
+using PvPAdventure.Common.Independent;
 using Terraria;
 using Terraria.ID;
 
@@ -19,7 +20,9 @@ public static class TeleportNetHandler
             return;
 
         Player requester = Main.player[requesterId];
-        if (requester == null || !requester.active)
+        if (requester == null || !requester.active || requester.dead || requester.ghost ||
+            !PortalSystem.Playing || !PortalSystem.CanTravelFrom(requester) ||
+            type is SpawnType.Random or SpawnType.Teammate)
             return;
 
         Vector2 teleportPos;
@@ -29,17 +32,6 @@ public static class TeleportNetHandler
             case SpawnType.World:
                 teleportPos = new Vector2(Main.spawnTileX, Main.spawnTileY - 3).ToWorldCoordinates();
                 break;
-
-            case SpawnType.Teammate:
-                {
-                    short idx = reader.ReadInt16();
-                    if (!SpawnSystem.IsValidTeammateIndex(requester, idx))
-                        return;
-
-                    Player target = Main.player[idx];
-                    teleportPos = target.position;
-                    break;
-                }
 
             case SpawnType.TeammateBed:
                 {
@@ -75,30 +67,6 @@ public static class TeleportNetHandler
                     ).ToWorldCoordinates();
                     break;
                 }
-            case SpawnType.Random:
-                {
-                    // Use vanilla logic to choose a random teleport destination
-                    Vector2 oldPos = requester.position;
-
-                    requester.TeleportationPotion();
-
-                    // TeleportationPotion() already moved the player.
-                    // We must re-sync the final position to all clients.
-                    NetMessage.SendData(
-                        MessageID.TeleportEntity,
-                        -1, -1, null,
-                        number: 0,
-                        number2: requester.whoAmI,
-                        number3: requester.position.X,
-                        number4: requester.position.Y,
-                        number5: TeleportationStyleID.RecallPotion
-                    );
-
-                    // Play teleport sound for everyone (local guaranteed)
-                    TeleportFxNetHandler.Send(requester.whoAmI);
-                    return;
-                }
-
             default:
                 return;
         }

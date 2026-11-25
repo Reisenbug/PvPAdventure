@@ -1,5 +1,6 @@
 ﻿using PvPAdventure.Core.Config;
 using PvPAdventure.Core.Debug;
+using PvPAdventure.Content.Items;
 using System;
 using Terraria;
 using Terraria.ModLoader;
@@ -18,7 +19,7 @@ public static class StartingItems
         {
             var (itemDef, stack) = (loadoutItem.Item, loadoutItem.Stack);
 
-            if (itemDef.IsUnloaded)
+            if (itemDef.IsUnloaded || itemDef.Type == ModContent.ItemType<AdventureMirror>())
                 continue;
 
             if (slot >= player.inventory.Length)

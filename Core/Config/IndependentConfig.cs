@@ -14,10 +14,6 @@ public sealed class IndependentConfig : ModConfig
     [Range(0, 60)]
     public int PortalCreationSeconds = 10;
 
-    [DefaultValue(500)]
-    [Range(1, 100000)]
-    public int PortalLife = 500;
-
     [DefaultValue(10)]
     [Range(0, 1000)]
     public int StartingGold = 10;
