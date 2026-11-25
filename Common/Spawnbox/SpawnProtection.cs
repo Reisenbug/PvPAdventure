@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using PvPAdventure.Common.Game;
 using PvPAdventure.Common.RacePeriod;
@@ -26,14 +27,76 @@ internal sealed class SpawnProtectionTile : GlobalTile
 internal sealed class SpawnProtectionPlayer : ModPlayer
 {
     private bool confined;
-    private Vector2 movementStart;
-    private bool startedOutsideSpawn;
+    [ThreadStatic]
+    private static Player collisionPlayer;
 
-    public override void PreUpdateMovement()
+    public override void Load()
     {
+        On_Player.Update += UpdateWithSpawnCollision;
+        On_Collision.TileCollision += CollideWithSpawn;
+    }
+
+    public override void Unload()
+    {
+        On_Player.Update -= UpdateWithSpawnCollision;
+        On_Collision.TileCollision -= CollideWithSpawn;
+    }
+
+    private static void UpdateWithSpawnCollision(On_Player.orig_Update orig, Player player, int index)
+    {
+        Player previous = collisionPlayer;
+        collisionPlayer = player;
+        try
+        {
+            orig(player, index);
+        }
+        finally
+        {
+            collisionPlayer = previous;
+        }
+    }
+
+    private static Vector2 CollideWithSpawn(On_Collision.orig_TileCollision orig, Vector2 position,
+        Vector2 velocity, int width, int height, bool fallThrough, bool fall2, int gravity)
+    {
+        Vector2 movement = orig(position, velocity, width, height, fallThrough, fall2, gravity);
+        Player player = collisionPlayer;
+        if (player == null || player.dead || player.ghost || player.position != position ||
+            player.width != width || (Main.netMode == NetmodeID.MultiplayerClient && player.whoAmI != Main.myPlayer) ||
+            ModContent.GetInstance<GameManager>().CurrentPhase != GameManager.Phase.Playing)
+            return movement;
+
         Rectangle bounds = AdventureRegionSystem.WorldArea;
-        startedOutsideSpawn = !bounds.IsEmpty && !bounds.Intersects(Player.Hitbox);
-        movementStart = Player.position;
+        float left = position.X;
+        float right = left + width;
+        float top = position.Y;
+        float bottom = top + height;
+        if (bounds.IsEmpty || (left < bounds.Right && right > bounds.Left && top < bounds.Bottom && bottom > bounds.Top))
+            return movement;
+
+        if (bottom > bounds.Top && top < bounds.Bottom)
+        {
+            if (right <= bounds.Left && right + movement.X > bounds.Left)
+                movement.X = bounds.Left - right;
+            else if (left >= bounds.Right && left + movement.X < bounds.Right)
+                movement.X = bounds.Right - left;
+        }
+
+        if (right + movement.X > bounds.Left && left + movement.X < bounds.Right)
+        {
+            if (bottom <= bounds.Top && bottom + movement.Y > bounds.Top)
+            {
+                movement.Y = bounds.Top - bottom;
+                Collision.down = true;
+            }
+            else if (top >= bounds.Bottom && top + movement.Y < bounds.Bottom)
+            {
+                movement.Y = bounds.Bottom - top;
+                Collision.up = true;
+            }
+        }
+
+        return movement;
     }
 
     public override void PostUpdate()
@@ -42,14 +105,10 @@ internal sealed class SpawnProtectionPlayer : ModPlayer
             return;
 
         Rectangle bounds = AdventureRegionSystem.WorldArea;
-        GameManager.Phase phase = ModContent.GetInstance<GameManager>().CurrentPhase;
-        if (Player.dead || bounds.IsEmpty || phase != GameManager.Phase.Waiting)
+        if (Player.dead || bounds.IsEmpty ||
+            ModContent.GetInstance<GameManager>().CurrentPhase != GameManager.Phase.Waiting)
         {
             confined = false;
-            if (!Player.dead && !Player.ghost && phase == GameManager.Phase.Playing &&
-                startedOutsideSpawn && bounds.Intersects(Player.Hitbox))
-                BlockEntry(bounds);
-            startedOutsideSpawn = false;
             return;
         }
 
@@ -68,27 +127,6 @@ internal sealed class SpawnProtectionPlayer : ModPlayer
         if (y != position.Y)
             Player.velocity.Y = 0;
         Player.position = new Vector2(x, y);
-    }
-
-    private void BlockEntry(Rectangle bounds)
-    {
-        Rectangle start = new((int)movementStart.X, (int)movementStart.Y, Player.width, Player.height);
-        if (start.Right <= bounds.Left || start.Left >= bounds.Right)
-        {
-            Player.position.X = start.Right <= bounds.Left ? bounds.Left - Player.width : bounds.Right;
-            Player.velocity.X = 0f;
-        }
-        else
-        {
-            bool fromAbove = start.Bottom <= bounds.Top;
-            Player.position.Y = fromAbove ? bounds.Top - Player.height : bounds.Bottom;
-            Player.velocity.Y = 0f;
-            if (fromAbove ? Player.gravDir > 0f : Player.gravDir < 0f)
-            {
-                Player.jump = 0;
-                Player.RefreshMovementAbilities(!Player.mount.Active || !Player.mount.BlockExtraJumps);
-            }
-        }
     }
 
     public override bool CanHitPvp(Item item, Player target) =>
