@@ -4,7 +4,6 @@ using Terraria;
 using Terraria.ID;
 using Terraria.Localization;
 using Terraria.ModLoader;
-using PvPFramework.Common.NPCs;
 using Team = Terraria.Enums.Team;
 
 namespace PvPAdventure.Content.NPCs;
@@ -70,16 +69,9 @@ public abstract class BoundNPC : ModNPC
     {
         Team team = GetPlayerTeam(whoAmI);
 
-        // Use TryGetGlobalNPC: if TeamOwnedTownNPC ever stops applying to bound NPCs, GetGlobalNPC
-        // would throw here and silently abort the whole unlock. The NPC should still be freed even
-        // if team ownership can't be recorded.
-        if (NPC.TryGetGlobalNPC(out TeamOwnedTownNPC owned))
-            owned.SetOwnerTeam(NPC, team, sync: false);
-
         NPC.AI_000_TransformBoundNPC(whoAmI, TransformInto);
 
-        if (NPC.TryGetGlobalNPC(out owned))
-            owned.SetOwnerTeam(NPC, team);
+        NPC.GetGlobalNPC<TeamOwnedTownNPC>().SetOwnerTeam(NPC, team);
     }
 
     private static Team GetPlayerTeam(int whoAmI)

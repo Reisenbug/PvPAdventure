@@ -1,5 +1,4 @@
 ﻿using Microsoft.Xna.Framework;
-using PvPFramework.Common.Combat;
 using PvPAdventure.Common.Travel.Portals;
 using PvPAdventure.Content.Portals;
 using Terraria;
@@ -44,7 +43,7 @@ internal class TravelPlayer : ModPlayer
         bool isBossProjectile = info.DamageSource is not null
             && info.DamageSource.TryGetCausingEntity(out Entity entity)
             && entity is Projectile projectile
-            && CombatManager.IsBossProjectile(projectile);
+            && projectile.GetGlobalProjectile<BossProjectileSource>().IsFromBoss;
 
         if (isBossProjectile)
             Log.Chat("Boss projectile while creating portal, cancelling portal use");
