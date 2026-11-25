@@ -4,7 +4,8 @@ using PvPAdventure.Common.Bounties;
 using PvPAdventure.Common.Game.StatTrackers;
 using PvPAdventure.Common.NPCs;
 using PvPAdventure.Core.Config;
-using PylonMatch.Common.Scoreboard;
+using PvPAdventure.Common.Statistics.UI;
+using PvPAdventure.Core.Input;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -46,7 +47,7 @@ public class PointsManager : ModSystem
     {
         if (!Main.dedServ)
         {
-            BossCompletion = new(this) { Active = false };
+            BossCompletion = new(this);
         }
     }
 
@@ -175,37 +176,6 @@ public class PointsManager : ModSystem
                 _downedNpcs[team].Add(reader.ReadInt16());
         }
 
-    }
-
-    public override void ModifyInterfaceLayers(
-    List<GameInterfaceLayer> layers)
-    {
-        if (BossCompletion == null ||
-            layers.Contains(BossCompletion))
-        {
-            return;
-        }
-
-        int playerInfoIndex = layers.FindIndex(layer => layer.Name == "PylonMatch: Scoreboard Player Info");
-
-        if (playerInfoIndex != -1)
-        {
-            // Scoreboard has already updated Bounds, but player info has
-            // not drawn yet.
-            layers.Insert(
-                playerInfoIndex,
-                BossCompletion);
-
-            return;
-        }
-
-        int scoreboardIndex = layers.FindIndex(layer => layer.Name == "PylonMatch: Scoreboard");
-        if (scoreboardIndex != -1)
-        {
-            layers.Insert(
-                scoreboardIndex + 1,
-                BossCompletion);
-        }
     }
 
     private void VisualizePointChange(int change, Team team, Vector2 at, string defeated = null)
@@ -342,6 +312,9 @@ public class PointsManager : ModSystem
     {
         protected override bool DrawSelf()
         {
+            if (Main.gameMenu || Main.mapFullscreen || ModContent.GetInstance<Keybinds>().Scoreboard?.Current != true ||
+                AdventureScoreboard.Bounds.IsEmpty)
+                return true;
             const int scoreboardPadding = 30;
             const int horizontalSpaceBetweenBossHeads = 50;
             const int verticalSeparationBetweenBossHeadAndTeamIcon = 40;
@@ -363,9 +336,8 @@ public class PointsManager : ModSystem
                     245);
 
             // Cast to int so no strange aliasing occurs on anything we render -- we only work with whole numbers in the end.
-            //int hoveredPlayerOffset = ScoreboardUISystem.HoveringAnotherPlayer ? 200 : 0;
             var containerPosition = new Vector2((int)((Main.screenWidth / 2.0f) - (containerSize.X / 2.0f)),
-                ScoreboardUISystem.Bounds.Bottom + scoreboardPadding);
+                AdventureScoreboard.Bounds.Bottom + scoreboardPadding);
 
             Utils.DrawInvBG(Main.spriteBatch, containerPosition.X, containerPosition.Y, containerSize.X,
                 containerSize.Y);

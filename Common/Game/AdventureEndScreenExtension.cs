@@ -2,7 +2,6 @@ using PvPAdventure.Common.Game.GameReporters;
 using PvPAdventure.Common.Game.StatTrackers;
 using PvPAdventure.Common.Statistics;
 using PylonMatch.Common.EndScreen;
-using PylonMatch.Common.Scoreboard;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -44,14 +43,15 @@ internal static class AdventureEndScreenExtension
 
     private static EndScreenPlayerStats CreatePlayerStats(Player player)
     {
-        ScoreboardEntry core = ScoreboardService.GetPlayerStats(player);
+        MatchStatsPlayer core = player.GetModPlayer<MatchStatsPlayer>();
         Dictionary<string, uint> stats = StatsReporter.CopyStats(player);
         Dictionary<string, IDictionary<int, uint>> itemStats = StatsReporter.CopyItemStats(player);
         uint Stat(string key) => stats.TryGetValue(key, out uint value) ? value : 0u;
 
         return new EndScreenPlayerStats(
             (byte)player.whoAmI, (Team)player.team, player.name,
-            core.Kills, core.Deaths, Clamp(core.Damage), Stat(StatsReporter.DamageTaken),
+            ClampCount(core.GetStat(MatchStatKey.Kills)), ClampCount(core.GetStat(MatchStatKey.Deaths)),
+            core.GetStat(MatchStatKey.DamageDealt), Stat(StatsReporter.DamageTaken),
             Stat(StatsReporter.TilesMined), Stat(StatsReporter.TilesPlaced),
             Stat(StatsReporter.ConsumablesUsed), Stat(StatsReporter.LavaDeaths),
             Stat(StatsReporter.FoodEaten), Stat(StatsReporter.BossDamageDealt), Stat(StatsReporter.PortalKills),
@@ -104,7 +104,7 @@ internal static class AdventureEndScreenExtension
         return (uint)weapons.Count;
     }
 
-    private static uint Clamp(long value) => (uint)Math.Clamp(value, 0L, uint.MaxValue);
+    private static int ClampCount(uint value) => (int)Math.Min(value, int.MaxValue);
     private static string Short(uint value) => value >= 1000 ? $"{value / 1000f:0.0}k" : value.ToString();
     private static string Plural(uint value, string word) => value == 1 ? word : word + "s";
 }

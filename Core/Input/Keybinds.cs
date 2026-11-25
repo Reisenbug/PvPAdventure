@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework.Input;
 using PvPAdventure.Common.Bounties;
 using PvPAdventure.Common.Statistics;
 using PvPAdventure.Content.Portals;
-using GameKeybinds = PylonMatch.Core.Input.Keybinds;
 using System.Collections.Generic;
 using Terraria;
 using Terraria.GameInput;
@@ -15,6 +14,7 @@ public class Keybinds : ModSystem
 {
     public ModKeybind BountyShop { get; private set; }
     public ModKeybind UsePortalCreator { get; private set; }
+    public ModKeybind Scoreboard { get; private set; }
 
     #region Portal creator label
     public static string UsePortalCreatorLabel
@@ -38,6 +38,7 @@ public class Keybinds : ModSystem
     {
         BountyShop = KeybindLoader.RegisterKeybind(Mod, "BountyShop", Keys.B);
         UsePortalCreator = KeybindLoader.RegisterKeybind(Mod, "UsePortalCreator", Keys.P);
+        Scoreboard = KeybindLoader.RegisterKeybind(Mod, "Scoreboard", Keys.Tab);
     }
 }
 
@@ -46,13 +47,6 @@ internal class KeybindsPlayer : ModPlayer
     public override void ProcessTriggers(TriggersSet triggersSet)
     {
         var keybinds = ModContent.GetInstance<Keybinds>();
-
-        // PvP Adventure extends Pylon Match's scoreboard with boss completion progress.
-        var scoreboardKey = ModContent.GetInstance<GameKeybinds>().Scoreboard;
-        if (scoreboardKey?.JustPressed == true)
-            ModContent.GetInstance<PointsManager>().BossCompletion.Active = true;
-        else if (scoreboardKey?.JustReleased == true)
-            ModContent.GetInstance<PointsManager>().BossCompletion.Active = false;
 
         // Bounty Shop
         if (keybinds.BountyShop.JustPressed)

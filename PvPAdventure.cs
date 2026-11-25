@@ -1,6 +1,6 @@
 using PvPAdventure.Core.Net;
 using PvPAdventure.Common.Game;
-using PylonMatch.Common.Scoreboard;
+using PvPAdventure.Common.Game.StatTrackers;
 using System.IO;
 using Terraria;
 using Terraria.ModLoader;
@@ -111,14 +111,13 @@ public class PvPAdventure : Mod
         if ((!string.IsNullOrEmpty(savedCharacter) && savedCharacter != characterKey) || savedMatch != CurrentMatchToken())
             return true;
 
-        ScoreboardService.SetPlayerStats(
-            player,
-            saved.GetInt("kills"),
-            saved.GetInt("deaths"),
-            saved.Get<long>("damage"),
-            saved.ContainsKey("damageTaken") ? saved.Get<long>("damageTaken") : 0,
-            saved.ContainsKey("currentStreak") ? saved.GetInt("currentStreak") : 0,
-            saved.ContainsKey("bestStreak") ? saved.GetInt("bestStreak") : 0);
+        MatchStatsPlayer stats = player.GetModPlayer<MatchStatsPlayer>();
+        stats.SetStat(MatchStatKey.Kills, (uint)System.Math.Max(0, saved.GetInt("kills")));
+        stats.SetStat(MatchStatKey.Deaths, (uint)System.Math.Max(0, saved.GetInt("deaths")));
+        stats.SetStat(MatchStatKey.DamageDealt, (uint)System.Math.Clamp(saved.Get<long>("damage"), 0L, uint.MaxValue));
+        stats.SetStat(MatchStatKey.DamageTaken, (uint)System.Math.Clamp(saved.Get<long>("damageTaken"), 0L, uint.MaxValue));
+        stats.SetStat(MatchStatKey.CurrentStreak, (uint)System.Math.Max(0, saved.GetInt("currentStreak")));
+        stats.SetStat(MatchStatKey.BestStreak, (uint)System.Math.Max(0, saved.GetInt("bestStreak")));
         return true;
     }
 
@@ -127,19 +126,19 @@ public class PvPAdventure : Mod
         if (Main.netMode == Terraria.ID.NetmodeID.MultiplayerClient)
             return true;
 
-        ScoreboardEntry stats = ScoreboardService.GetPlayerStats(player);
+        MatchStatsPlayer stats = player.GetModPlayer<MatchStatsPlayer>();
         TagCompound ssc = root.ContainsKey("ErkySSC") ? root.GetCompound("ErkySSC") : [];
         ssc["PvPAdventure"] = new TagCompound
         {
             ["version"] = 2,
             ["characterKey"] = characterKey ?? "",
             ["matchToken"] = CurrentMatchToken(),
-            ["kills"] = stats.Kills,
-            ["deaths"] = stats.Deaths,
-            ["damage"] = stats.Damage,
-            ["damageTaken"] = stats.DamageTaken,
-            ["currentStreak"] = stats.CurrentStreak,
-            ["bestStreak"] = stats.BestStreak
+            ["kills"] = (int)System.Math.Min(stats.GetStat(MatchStatKey.Kills), int.MaxValue),
+            ["deaths"] = (int)System.Math.Min(stats.GetStat(MatchStatKey.Deaths), int.MaxValue),
+            ["damage"] = (long)stats.GetStat(MatchStatKey.DamageDealt),
+            ["damageTaken"] = (long)stats.GetStat(MatchStatKey.DamageTaken),
+            ["currentStreak"] = (int)System.Math.Min(stats.GetStat(MatchStatKey.CurrentStreak), int.MaxValue),
+            ["bestStreak"] = (int)System.Math.Min(stats.GetStat(MatchStatKey.BestStreak), int.MaxValue)
         };
         root["ErkySSC"] = ssc;
         return true;

@@ -23,7 +23,11 @@ internal enum MatchStatKey : byte
     PortalKills,
     LostHoney,
     PointKills,
-    PointDeaths
+    PointDeaths,
+    Kills,
+    Deaths,
+    CurrentStreak,
+    BestStreak
 }
 
 internal sealed class MatchStatsPlayer : ModPlayer
@@ -61,6 +65,24 @@ internal sealed class MatchStatsPlayer : ModPlayer
     {
         string key = StatsReporter.GetStatKey(statKey);
         return !string.IsNullOrEmpty(key) && stats.TryGetValue(key, out uint value) ? value : 0;
+    }
+
+    internal void SetStat(MatchStatKey key, uint value) =>
+        stats[StatsReporter.GetStatKey(key)] = value;
+
+    internal void ResetStreak() => SetStat(MatchStatKey.CurrentStreak, 0);
+
+    internal static void RecordKill(Player killer, Player victim)
+    {
+        MatchStatsPlayer attacker = killer.GetModPlayer<MatchStatsPlayer>();
+        MatchStatsPlayer target = victim.GetModPlayer<MatchStatsPlayer>();
+        attacker.ApplyDelta(MatchStatKey.Kills, -1, 1);
+        attacker.ApplyDelta(MatchStatKey.CurrentStreak, -1, 1);
+        uint streak = attacker.GetStat(MatchStatKey.CurrentStreak);
+        if (streak > attacker.GetStat(MatchStatKey.BestStreak))
+            attacker.SetStat(MatchStatKey.BestStreak, streak);
+        target.ApplyDelta(MatchStatKey.Deaths, -1, 1);
+        target.ResetStreak();
     }
 
     public Dictionary<string, IDictionary<int, uint>> CopyItemStats()

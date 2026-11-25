@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using PvPAdventure.Common.Bounties;
 using PvPAdventure.Core.Utilities;
-using PylonMatch.Common.Scoreboard;
 using System;
 using System.Collections.Generic;
 using Terraria;
@@ -14,10 +13,7 @@ namespace PvPAdventure.Common.Statistics.UI;
 [Autoload(Side = ModSide.Client)]
 public class AdventureScoreboardHeader : ModSystem
 {
-    public override void Load() => ScoreboardTeamHeader.DrawExtra = DrawTeamExtra;
-    public override void Unload() => ScoreboardTeamHeader.DrawExtra = null;
-
-    private static void DrawTeamExtra(Rectangle corner, Team team)
+    internal static void DrawTeamExtra(Rectangle corner, Team team)
     {
         int points = ModContent.GetInstance<PointsManager>().Points.TryGetValue(team, out int p) ? p : 0;
         int shards = ModContent.GetInstance<BountyManager>().Bounties.TryGetValue(team, out IList<BountyManager.Page> pages) ? pages.Count : 0;
@@ -32,7 +28,7 @@ public class AdventureScoreboardHeader : ModSystem
         DrawIconValue(Main.spriteBatch, pointsCell, pointsIcon, points.ToString(), 1.375f);
         DrawIconValue(Main.spriteBatch, shardsCell, shardsIcon, shards.ToString(), 1.55f);
 
-        Point mouse = ScoreboardTeamHeader.Cursor;
+        Point mouse = new(Main.mouseX, Main.mouseY);
 
         if (pointsCell.Contains(mouse))
         {

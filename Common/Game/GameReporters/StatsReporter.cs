@@ -43,6 +43,10 @@ internal static class StatsReporter
         MatchStatKey.LostHoney => LostHoney,
         MatchStatKey.PointKills => PointKills,
         MatchStatKey.PointDeaths => PointDeaths,
+        MatchStatKey.Kills => "kills",
+        MatchStatKey.Deaths => "deaths",
+        MatchStatKey.CurrentStreak => "current_streak",
+        MatchStatKey.BestStreak => "best_streak",
         _ => ""
     };
 
