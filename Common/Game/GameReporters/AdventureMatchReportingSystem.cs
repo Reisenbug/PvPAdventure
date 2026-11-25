@@ -1,4 +1,3 @@
-using PvPAdventure.Common.Game.MatchReplays;
 using PvPAdventure.Common.Game.StatTrackers;
 using PvPAdventure.Common.Statistics;
 using System;
@@ -8,7 +7,7 @@ using Terraria.ModLoader;
 
 namespace PvPAdventure.Common.Game.GameReporters;
 
-/// <summary>Owns local match statistics, replay recording, and delayed result presentation.</summary>
+/// <summary>Owns local match statistics and delayed result presentation.</summary>
 internal sealed class AdventureMatchReportingSystem : ModSystem
 {
     private string matchToken;
@@ -24,7 +23,6 @@ internal sealed class AdventureMatchReportingSystem : ModSystem
             if (player.TryGetModPlayer(out MatchStatsPlayer stats)) stats.ResetMatchStats();
         ModContent.GetInstance<PointsManager>().ResetForMatch();
         matchToken = Guid.NewGuid().ToString("N");
-        ModContent.GetInstance<ReeseReplayControlSystem>().StartMatchRecording(matchToken);
         if (Main.netMode == NetmodeID.Server) NetMessage.SendData(MessageID.WorldData);
         Log.Info($"Started authoritative Adventure match. MatchToken={matchToken}");
     }
@@ -32,7 +30,6 @@ internal sealed class AdventureMatchReportingSystem : ModSystem
     public void Complete()
     {
         if (Main.netMode == NetmodeID.MultiplayerClient || matchToken == null) return;
-        string token = matchToken;
         matchToken = null;
         try
         {
@@ -40,15 +37,12 @@ internal sealed class AdventureMatchReportingSystem : ModSystem
             presentAfter = Main.GameUpdateCount + 20;
         }
         catch (Exception ex) { Log.Error($"Failed to build the Adventure end screen: {ex}"); }
-        ModContent.GetInstance<ReeseReplayControlSystem>().StopMatchRecording(token);
     }
 
     public void Abort()
     {
-        string token = matchToken;
         matchToken = null;
         ClearPending();
-        if (token != null) ModContent.GetInstance<ReeseReplayControlSystem>().StopMatchRecording(token);
     }
 
     public void Tick()

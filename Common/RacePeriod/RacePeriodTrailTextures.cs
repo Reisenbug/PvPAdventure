@@ -15,9 +15,6 @@ internal sealed class RacePeriodTrailTextures : ModSystem
     private static readonly HashSet<Texture2D> trailTextures = new();
     private static Texture2D streak;
 
-    internal static bool IsTrailTexture(Texture2D texture) =>
-        texture != null && trailTextures.Contains(texture);
-
     internal static Texture2D Streak =>
         streak ??= CreateStreak();
 
