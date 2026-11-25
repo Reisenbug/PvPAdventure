@@ -53,7 +53,9 @@ public sealed class RacePeriodPlayer : ModPlayer
         ModContent.GetInstance<GameManager>().IsSelected;
 
     private static bool InRaceWindow => RacePeriodRules.WaitingProvider?.Invoke() == true;
-    private bool RaceWindowActive => FeatureEnabled && InRaceWindow && RacePeriodRules.EntryAreaProvider?.Invoke(Player) == true;
+    private bool CanEnterRace => !Player.dead && !Player.ghost && FeatureEnabled &&
+        RacePeriodRules.EntryAreaProvider?.Invoke(Player) == true;
+    private bool RaceWindowActive => InRaceWindow && CanEnterRace;
 
     public override void ModifyDrawInfo(ref PlayerDrawSet drawInfo)
     {
@@ -334,7 +336,7 @@ public sealed class RacePeriodPlayer : ModPlayer
         }
 
         // Selection is captured once on entry. Changing cosmetics cannot swap a live race mount.
-        if (!RaceWindowActive)
+        if (!CanEnterRace)
             return;
 
         raceMountType = RacePeriodRules.GetMountType(Player);
