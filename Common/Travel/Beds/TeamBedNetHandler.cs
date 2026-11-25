@@ -1,6 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
 using PvPAdventure.Content.Portals;
-using ErkySSC.Common.SSC;
 using PvPAdventure.Core.Net;
 using System.IO;
 using Terraria;
@@ -123,8 +122,7 @@ public static class TeamBedNetHandler
 
         if (Main.netMode == NetmodeID.Server)
         {
-            // SSC owns client bed changes and saving; Adventure cannot bypass its admission checks.
-            if (playerId != whoAmI || SSCBedSystem.IsEnabled)
+            if (playerId != whoAmI)
                 return;
 
             if (spawnX >= 0)

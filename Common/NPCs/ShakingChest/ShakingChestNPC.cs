@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using PvPAdventure.Common.Game;
-using PvPAdventure.Content.Portals;
+using PvPAdventure.Common.SSC;
 using PvPAdventure.Core.Compat;
 using PvPAdventure.Core.Config;
 using Terraria;
@@ -105,23 +105,11 @@ public sealed class ShakingChestNPC : GlobalNPC
             player.buffTime[i] = 0;
         }
 
-        if (!ErkySSCCompat.TryApplyStartingItems(player))
-        {
-            ApplyFallbackStartingItems(player);
-            AddStartingCoins(player);
-        }
+        StartingItems.Apply(player);
+        AddStartingCoins(player);
 
         Recipe.FindRecipes();
         ShakingChestLoadouts.Sync(player);
-    }
-
-    private static void ApplyFallbackStartingItems(Player player)
-    {
-        player.inventory[0] = new Item(ItemID.CopperShortsword);
-        player.inventory[1] = new Item(ItemID.CopperPickaxe);
-        player.inventory[2] = new Item(ItemID.CopperAxe);
-        player.inventory[4] = new Item(ItemID.Bed);
-        player.inventory[5] = new Item(ModContent.ItemType<PortalCreatorItem>());
     }
 
     private static void AddStartingCoins(Player player)

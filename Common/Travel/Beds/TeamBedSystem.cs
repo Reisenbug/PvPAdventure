@@ -1,6 +1,5 @@
 ﻿using Microsoft.Xna.Framework;
 using PvPAdventure.Common.Statistics;
-using ErkySSC.Common.SSC;
 using PvPAdventure.Common.Travel.Portals;
 using PvPAdventure.Core.Config;
 using PvPAdventure.Core.Utilities;
@@ -217,8 +216,9 @@ internal sealed class TeamBedSystem : ModSystem
         if (ownerId < 0 || ownerId >= Main.maxPlayers || Main.player[ownerId] is not { active: true } owner)
             return;
 
-        if (!SSCBedSystem.SetSpawn(owner, -1, -1))
+        if (owner.SpawnX < 0 || owner.SpawnY < 0)
             return;
+        owner.RemoveSpawn();
 
         Log.Chat($"Cleared owner bed spawn pos=({origin.X},{origin.Y}) ownerId={ownerId}, announce={announceDestroyed}");
 
