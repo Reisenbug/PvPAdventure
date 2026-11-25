@@ -1,117 +1,112 @@
 using System;
 using System.IO;
 using System.Linq;
-using ErkySSC.Common.RegionProtection;
 using Microsoft.Xna.Framework;
 using Newtonsoft.Json.Linq;
 using PvPAdventure.Common.Game;
-using PylonMatch.Common.Game;
 using PvPAdventure.Common.RacePeriod;
 using Terraria;
-using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.ModLoader.Default;
 using Terraria.ModLoader.IO;
 
 namespace PvPAdventure.Core.Compat;
 
-/// <summary>Adventure supplies match state; ErkySSC owns the region and all protection.</summary>
 public sealed class AdventureRegionSystem : ModSystem
 {
     public const string RegionKey = "PvPAdventure.Spawnbox";
-    private Point lastWorldSpawn;
-    private bool registered;
-    public static ProtectedRegion SpawnRegion => RegionSystem.Instance.FindManaged(RegionKey);
-    public static Rectangle TileArea => SpawnRegion?.Settings.TileArea ?? Rectangle.Empty;
-    public static Rectangle WorldArea => ModContent.GetInstance<GameManager>().IsSelected
-        ? GameSession.Instance.StartingRegionBounds ?? SpawnRegion?.Settings.WorldArea ?? Rectangle.Empty
-        : Rectangle.Empty;
+    private int width = 50;
+    private int height = 50;
+    private int offsetX;
+    private int offsetY;
+
+    public static Rectangle TileArea => ModContent.GetInstance<GameManager>().IsSelected
+        ? ModContent.GetInstance<AdventureRegionSystem>().GetTileArea() : Rectangle.Empty;
+
+    public static Rectangle WorldArea
+    {
+        get
+        {
+            Rectangle area = TileArea;
+            return new Rectangle(area.X * 16, area.Y * 16, area.Width * 16, area.Height * 16);
+        }
+    }
+
     public static bool Contains(Player player) => player?.active == true && WorldArea.Intersects(player.Hitbox);
-    private static bool Waiting => ModContent.GetInstance<GameManager>().CurrentPhase == GameManager.Phase.Waiting;
 
     public override void PostSetupContent()
     {
-        GameSession.StageChanged += OnStageChanged;
-        RacePeriodRules.WaitingProvider = () => ModContent.GetInstance<GameManager>().IsSelected && Waiting && SpawnRegion != null;
+        RacePeriodRules.WaitingProvider = () =>
+            ModContent.GetInstance<GameManager>().CurrentPhase == GameManager.Phase.Waiting;
         RacePeriodRules.EntryAreaProvider = Contains;
     }
 
     public override void Unload()
     {
-        GameSession.StageChanged -= OnStageChanged;
-        RegionSystem.Instance.UnregisterManaged(RegionKey);
         RacePeriodRules.WaitingProvider = null;
         RacePeriodRules.EntryAreaProvider = null;
     }
 
-    public override void ClearWorld() => lastWorldSpawn = Point.Zero;
-
-    public override void PreUpdateEntities()
+    public override void ClearWorld()
     {
-        RefreshRegistration();
-        if (Main.netMode == NetmodeID.MultiplayerClient) return;
-        // A changed world spawn moves the managed region by the same amount, retaining edits.
-        Point spawn = new(Main.spawnTileX, Main.spawnTileY);
-        if (lastWorldSpawn != Point.Zero && spawn != lastWorldSpawn && SpawnRegion is { } region)
-            RegionSystem.Instance.UpdateRegion(region.Id, region.Settings with
-            {
-                X = region.Settings.X + spawn.X - lastWorldSpawn.X,
-                Y = region.Settings.Y + spawn.Y - lastWorldSpawn.Y
-            });
-        lastWorldSpawn = spawn;
+        width = height = 50;
+        offsetX = offsetY = 0;
     }
 
-    private static void OnStageChanged(GameEvent owner, string previous, string next) => UpdateMatchState();
+    public override void OnWorldLoad() => ReadBounds(null, ReadLegacyConfig());
 
-    private void RefreshRegistration()
+    public override void LoadWorldData(TagCompound tag) => ReadBounds(
+        tag.ContainsKey("SpawnBoxWidth") ? tag : FindLegacyBounds(), ReadLegacyConfig());
+
+    public override void SaveWorldData(TagCompound tag)
     {
-        bool selected = ModContent.GetInstance<GameManager>().IsSelected;
-        if (selected == registered) return;
-        if (selected)
-            RegionSystem.Instance.RegisterManaged(RegionKey, new(CreateRegion, () => !GameSession.Instance.IsPlaying,
-                player => player.GetModPlayer<RacePeriodPlayer>().IsRacing ? 22 : 0,
-                Policy: () => new RegionPolicy { OuterBorder = true, InnerBorder = !GameSession.Instance.IsPlaying, SpawnProtection = true }));
-        else RegionSystem.Instance.UnregisterManaged(RegionKey);
-        registered = selected;
+        tag["SpawnBoxWidth"] = width;
+        tag["SpawnBoxHeight"] = height;
+        tag["SpawnBoxXOffset"] = offsetX;
+        tag["SpawnBoxYOffset"] = offsetY;
     }
 
-    public static void UpdateMatchState()
+    public override void NetSend(BinaryWriter writer)
     {
-        ModContent.GetInstance<AdventureRegionSystem>().RefreshRegistration();
-        RegionSystem.Instance.RefreshManagedRegions();
+        writer.Write((byte)width);
+        writer.Write((byte)height);
+        writer.Write((sbyte)offsetX);
+        writer.Write((sbyte)offsetY);
     }
 
-    private static RegionSeed CreateRegion()
+    public override void NetReceive(BinaryReader reader)
+    {
+        width = Math.Clamp((int)reader.ReadByte(), 5, 50);
+        height = Math.Clamp((int)reader.ReadByte(), 5, 50);
+        offsetX = Math.Clamp((int)reader.ReadSByte(), -20, 20);
+        offsetY = Math.Clamp((int)reader.ReadSByte(), -20, 20);
+    }
+
+    private Rectangle GetTileArea()
+    {
+        int left = Math.Clamp(Main.spawnTileX + offsetX - width / 2, 0, Math.Max(0, Main.maxTilesX - width));
+        int top = Math.Clamp(Main.spawnTileY + offsetY - height / 2, 0, Math.Max(0, Main.maxTilesY - height));
+        return new Rectangle(left, top, width, height);
+    }
+
+    private static TagCompound FindLegacyBounds()
     {
         // Removed ModSystems are retained by tModLoader here, including cloud-world saves.
         // Read only the old system's payload; leave it available as a rollback backup.
         TagCompound legacy = ModContent.GetInstance<UnloadedSystem>().data?
             .FirstOrDefault(entry => entry.GetString("mod") == "PvPFramework" &&
                 entry.GetString("name") == "SpawnBoxSystem")?.GetCompound("data");
-        return FromLegacy(legacy, ReadLegacyConfig());
+        return legacy;
     }
 
-    internal static RegionSeed FromLegacy(TagCompound legacy, JObject config)
+    private void ReadBounds(TagCompound legacy, JObject config)
     {
         JObject defaults = config?["SpawnBox"] as JObject;
         bool saved = legacy?.ContainsKey("SpawnBoxWidth") == true;
-        int width = saved ? legacy.GetInt("SpawnBoxWidth") : (int?)defaults?["DefaultWidth"] ?? 50;
-        int height = saved ? legacy.GetInt("SpawnBoxHeight") : (int?)defaults?["DefaultHeight"] ?? 50;
-        int offsetX = saved ? legacy.GetInt("SpawnBoxXOffset") : (int?)defaults?["DefaultXOffset"] ?? 0;
-        int offsetY = saved ? legacy.GetInt("SpawnBoxYOffset") : (int?)defaults?["DefaultYOffset"] ?? 0;
-        int thickness = saved && legacy.ContainsKey("SpawnBoxThickness") ? legacy.GetInt("SpawnBoxThickness") : (int?)defaults?["DefaultThickness"] ?? 1;
-        RegionSettings settings = RegionSystem.Defaults() with
-        {
-            Width = Math.Clamp(width, 5, 50), Height = Math.Clamp(height, 5, 50),
-            X = Main.spawnTileX + Math.Clamp(offsetX, -20, 20),
-            Y = Main.spawnTileY + Math.Clamp(offsetY, -20, 20)
-        };
-        return new(settings.Clamped(Main.maxTilesX, Main.maxTilesY), new RegionOptions
-        {
-            SpawnProtection = true, BorderThickness = Math.Clamp(thickness, 1, 10),
-            ShowPlayerNames = (bool?)config?["ShowSpawnboxPlayerNames"] ?? true,
-            PulseTeamColor = (bool?)config?["PulsingTeamColor"] ?? true
-        });
+        width = Math.Clamp(saved ? legacy.GetInt("SpawnBoxWidth") : (int?)defaults?["DefaultWidth"] ?? 50, 5, 50);
+        height = Math.Clamp(saved ? legacy.GetInt("SpawnBoxHeight") : (int?)defaults?["DefaultHeight"] ?? 50, 5, 50);
+        offsetX = Math.Clamp(saved ? legacy.GetInt("SpawnBoxXOffset") : (int?)defaults?["DefaultXOffset"] ?? 0, -20, 20);
+        offsetY = Math.Clamp(saved ? legacy.GetInt("SpawnBoxYOffset") : (int?)defaults?["DefaultYOffset"] ?? 0, -20, 20);
     }
 
     private static JObject ReadLegacyConfig()
