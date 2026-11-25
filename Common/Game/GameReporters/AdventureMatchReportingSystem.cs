@@ -2,7 +2,6 @@ using PvPAdventure.Common.Game.MatchReplays;
 using PvPAdventure.Common.Game.StatTrackers;
 using PvPAdventure.Common.Statistics;
 using PylonMatch.Common.EndScreen;
-using PylonMatch.Common.Game;
 using System;
 using Terraria;
 using Terraria.ID;
@@ -56,10 +55,10 @@ internal sealed class AdventureMatchReportingSystem : ModSystem
 
     public void Tick()
     {
-        GameSession session = GameSession.Instance;
-        if (!session.IsSelected("pvpa")) return;
+        GameManager game = ModContent.GetInstance<GameManager>();
+        if (!game.IsSelected) return;
         if (pendingEndScreen == null || Main.netMode == NetmodeID.MultiplayerClient) return;
-        if (session.IsRunning) { ClearPending(); return; }
+        if (game.IsRunning) { ClearPending(); return; }
         if (Main.GameUpdateCount < presentAfter) return;
         EndScreenSummary summary = pendingEndScreen;
         ClearPending();
@@ -69,8 +68,8 @@ internal sealed class AdventureMatchReportingSystem : ModSystem
 
     public override void PostUpdateEverything()
     {
-        GameSession session = GameSession.Instance;
-        if (!Main.dedServ && session.IsSelected("pvpa") && session.IsPlaying && Main.GameUpdateCount % 30 == 0)
+        GameManager game = ModContent.GetInstance<GameManager>();
+        if (!Main.dedServ && game.CurrentPhase == GameManager.Phase.Playing && Main.GameUpdateCount % 30 == 0)
             EndScreenService.CaptureLivePlayers();
     }
 

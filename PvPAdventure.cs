@@ -67,6 +67,10 @@ public class PvPAdventure : Mod
                 Common.Security.AdminPermissions.Handle(reader, whoAmI);
                 break;
 
+            case AdventurePacketIdentifier.MatchControl:
+                MatchCommand.Handle(reader, whoAmI);
+                break;
+
             default:
                 Log.Warn($"[Packet] Unknown packet id: {(byte)id} ({id})");
                 break;

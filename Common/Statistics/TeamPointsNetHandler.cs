@@ -1,6 +1,6 @@
 using PvPAdventure.Common.Security;
 using PvPAdventure.Core.Net;
-using PylonMatch.Common.Game;
+using PvPAdventure.Common.Game;
 using System;
 using System.IO;
 using Terraria;
@@ -16,7 +16,7 @@ internal static class TeamPointsNetHandler
     public static void Set(Team team, int value)
     {
         if (Main.gameMenu || Main.LocalPlayer?.active != true || !AdminPermissions.RequireLocal() ||
-            !GameSession.Instance.IsSelected("pvpa") || !ValidTeam(team)) return;
+            !ModContent.GetInstance<GameManager>().IsSelected || !ValidTeam(team)) return;
         if (Main.netMode != NetmodeID.MultiplayerClient)
         {
             ModContent.GetInstance<PointsManager>().SetTeamPoints(team, value);
@@ -32,7 +32,7 @@ internal static class TeamPointsNetHandler
     public static void HandlePacket(BinaryReader reader, int sender)
     {
         if (Main.netMode != NetmodeID.Server || sender < 0 || sender >= Main.maxPlayers ||
-            !AdminPermissions.HasAccess(sender) || !GameSession.Instance.IsSelected("pvpa")) return;
+            !AdminPermissions.HasAccess(sender) || !ModContent.GetInstance<GameManager>().IsSelected) return;
         Team team = (Team)reader.ReadByte();
         int value = reader.ReadInt32();
         if (ValidTeam(team)) ModContent.GetInstance<PointsManager>().SetTeamPoints(team, value);

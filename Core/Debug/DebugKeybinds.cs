@@ -5,7 +5,6 @@ using PvPAdventure.Common.Bounties;
 using PvPAdventure.Common.Game;
 using PvPAdventure.Common.Security;
 using PvPAdventure.Common.Travel.UI;
-using PylonMatch.Common.Game;
 using PvPAdventure.Core.Utilities;
 using PvPAdventure.UI;
 using Terraria;
@@ -75,14 +74,14 @@ internal sealed class DebugKeybinds : ModSystem
     {
         GameManager gameManager = ModContent.GetInstance<GameManager>();
 
-        if (!gameManager.IsSelected || GameSession.Instance.IsRunning)
+        if (!gameManager.IsSelected || gameManager.IsRunning)
         {
             Log.Chat("Shift+NumPad2: select Adventure and wait for the current event to finish.");
             return;
         }
 
         if (!AdminPermissions.RequireLocal()) return;
-        GameSessionNetHandler.Start(GameSession.MaxDurationTicks, StartGameCountdownSeconds);
+        MatchCommand.Request(MatchCommand.ActionKind.Start, GameManager.DefaultDurationMinutes, StartGameCountdownSeconds);
 
         Log.Chat("Shift+NumPad2: starting a match.");
     }
@@ -92,14 +91,14 @@ internal sealed class DebugKeybinds : ModSystem
     {
         GameManager gameManager = ModContent.GetInstance<GameManager>();
 
-        if (!gameManager.IsSelected || !GameSession.Instance.IsRunning)
+        if (!gameManager.IsSelected || !gameManager.IsRunning)
         {
             Log.Chat("Shift+NumPad3: no match or countdown to end.");
             return;
         }
 
         if (!AdminPermissions.RequireLocal()) return;
-        GameSessionNetHandler.End();
+        MatchCommand.Request(MatchCommand.ActionKind.End);
 
         Log.Chat("Shift+NumPad3: ending the match or active countdown.");
     }

@@ -14,4 +14,5 @@ public enum AdventurePacketIdentifier : byte
     TeamPoints,
     AnglerQuest,
     AdminPermissions,
+    MatchControl,
 }
