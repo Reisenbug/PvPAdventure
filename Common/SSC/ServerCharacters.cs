@@ -128,10 +128,6 @@ internal sealed class ServerCharacters : ModSystem
         int team = character.GetInt("team");
         if (team is < 1 or > 5)
             team = Random.Shared.Next(1, 6);
-        byte[] payload = Encode(new TagCompound { ["vanilla"] = vanilla, ["modded"] = modded, ["team"] = team });
-        if (payload.Length > MaxTransferBytes)
-            throw new InvalidDataException("The server character is too large to send.");
-
         Player player = file.Player;
         player.name = joining.name;
         player.whoAmI = slot;
@@ -143,6 +139,14 @@ internal sealed class ServerCharacters : ModSystem
             Player.CheckSpawn(player.SpawnX, player.SpawnY);
         if (!hasBed)
             player.RemoveSpawn();
+        byte[] payload = Encode(new TagCompound
+        {
+            ["vanilla"] = vanilla, ["modded"] = modded, ["team"] = team,
+            ["bedX"] = player.SpawnX, ["bedY"] = player.SpawnY
+        });
+        if (payload.Length > MaxTransferBytes)
+            throw new InvalidDataException("The server character is too large to send.");
+
         Main.player[slot] = player;
         sessions.Add(slot, new CharacterSession(store, file, ReadPosition(character)));
         PvPAdventure.ImportSscStats(player, player.name, modded);
@@ -206,6 +210,12 @@ internal sealed class ServerCharacters : ModSystem
             loaded.Player.whoAmI = Main.myPlayer;
             loaded.Player.active = joining.active;
             loaded.Player.team = payload.GetInt("team");
+            int bedX = payload.GetInt("bedX");
+            int bedY = payload.GetInt("bedY");
+            if (WorldGen.InWorld(bedX, bedY, 10))
+                loaded.Player.ChangeSpawn(bedX, bedY);
+            else
+                loaded.Player.RemoveSpawn();
             loaded.MarkAsServerSide();
             originalFile ??= Main.ActivePlayerFileData;
             serverFile = loaded;
