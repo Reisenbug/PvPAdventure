@@ -22,6 +22,26 @@ public static class AdventureDropDatabase
         public string GetConditionDescription() => "Drops pre-hardmode";
     }
 
+    private sealed class DownedAnyMechBoss : IItemDropRuleCondition
+    {
+        public bool CanDrop(DropAttemptInfo info) =>
+            NPC.downedMechBoss1 || NPC.downedMechBoss2 || NPC.downedMechBoss3;
+
+        public bool CanShowItemDropInUI() => true;
+        public string GetConditionDescription() => "Drops after defeating any mechanical boss";
+    }
+
+    private static bool RuleDropsItem(IItemDropRule rule, int type)
+    {
+        if (rule is CommonDrop commonDrop && commonDrop.itemId == type)
+            return true;
+        if (rule is DropBasedOnExpertMode expert &&
+            (RuleDropsItem(expert.ruleForNormalMode, type) || RuleDropsItem(expert.ruleForExpertMode, type)))
+            return true;
+
+        return rule.ChainedRules.Any(chain => RuleDropsItem(chain.RuleToChain, type));
+    }
+
     private static void ModifyDropRate(IItemDropRule rule, int type, int numerator, int denominator)
     {
         if (rule is CommonDrop commonDrop && commonDrop.itemId == type)
@@ -48,6 +68,9 @@ public static class AdventureDropDatabase
 
         foreach (var drop in drops)
             ModifyDropRate(drop, ItemID.MagnetSphere, 1, 20);
+
+        foreach (var drop in drops)
+            ModifyDropRate(drop, ItemID.Yelets, 1, 20);
 
         switch (npc.type)
         {
@@ -244,11 +267,10 @@ public static class AdventureDropDatabase
                 break;
 
             case NPCID.AngryTrapper:
+                npcLoot.RemoveWhere(rule => RuleDropsItem(rule, ItemID.Uzi));
+                npcLoot.Add(ItemDropRule.ByCondition(new DownedAnyMechBoss(), ItemID.Uzi, chanceDenominator: 10));
                 foreach (var drop in drops)
-                {
-                    ModifyDropRate(drop, ItemID.Uzi, 1, 15);
                     ModifyDropRate(drop, ItemID.Vine, 1, 1);
-                }
                 break;
 
             case NPCID.ManEater:
