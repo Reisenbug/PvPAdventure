@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using PvPAdventure.UI;
 using Terraria;
 using Terraria.GameContent.UI.Elements;
 using Terraria.ModLoader;
@@ -15,6 +16,8 @@ internal sealed class MatchControlsUI : ModSystem
     private GameTime drawTime;
     private bool wasRunning;
     private bool wasPaused;
+    private int matchMinutes = GameManager.DefaultDurationMinutes;
+    private int countdownSeconds = 10;
 
     public override void Load() => ui = new UserInterface();
 
@@ -33,8 +36,8 @@ internal sealed class MatchControlsUI : ModSystem
         UIState state = new();
         UIPanel panel = new() { HAlign = 0.5f };
         panel.Top.Set(42, 0);
-        panel.Width.Set(280, 0);
-        panel.Height.Set(60, 0);
+        panel.Width.Set(game.IsRunning ? 280 : 440, 0);
+        panel.Height.Set(game.IsRunning ? 60 : 118, 0);
         panel.OnUpdate += _ =>
         {
             if (panel.IsMouseHovering)
@@ -48,15 +51,23 @@ internal sealed class MatchControlsUI : ModSystem
             AddButton(panel, "End", 0.5f, () => MatchCommand.Request(MatchCommand.ActionKind.End));
         }
         else
+        {
+            var duration = new UISliderElement("Time", 1, 195, matchMinutes, 1, value => matchMinutes = (int)value);
+            var countdown = new UISliderElement("Countdown (s)", 0, 10, countdownSeconds, 1,
+                value => countdownSeconds = (int)value);
+            countdown.Top.Set(26, 0);
+            panel.Append(duration);
+            panel.Append(countdown);
             AddButton(panel, "Start", 0, () =>
-                MatchCommand.Request(MatchCommand.ActionKind.Start, GameManager.DefaultDurationMinutes, 10));
+                MatchCommand.Request(MatchCommand.ActionKind.Start, matchMinutes, countdownSeconds));
+        }
         AddButton(panel, "Close", 1, () => ui.SetState(null));
         ui.SetState(state);
     }
 
     private static void AddButton(UIPanel panel, string label, float align, Action click)
     {
-        UITextPanel<string> button = new(label, 0.85f) { HAlign = align, VAlign = 0.5f };
+        UITextPanel<string> button = new(label, 0.85f) { HAlign = align, VAlign = 1f };
         button.OnLeftClick += (_, _) => click();
         panel.Append(button);
     }
