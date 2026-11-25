@@ -100,6 +100,14 @@ public class ServerConfig : ModConfig
     public float BoundSpawnChance { get; set; }
 
     [Header("Gameplay")]
+    [DefaultValue(true)]
+    public bool RacePeriodEnabled { get; set; } = true;
+
+    [Range(1f, 20f)]
+    [Increment(0.25f)]
+    [DefaultValue(8f)]
+    public float RacePeriodRunSpeed { get; set; } = 8f;
+
     [BackgroundColor(40, 90, 40)]
     [Range(0, 60)]
     [DefaultValue(4)]
