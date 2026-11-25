@@ -36,7 +36,7 @@ public sealed class RacePeriodPlayer : ModPlayer
     private bool wasWaiting;
 
     public bool InRacePeriod => FeatureEnabled && raceMountApplied && !Player.dead && !Player.ghost;
-    private bool IsRacing => InRacePeriod && Player.mount.Active && Player.mount.Type == RaceMount;
+    internal bool IsRacing => InRacePeriod && Player.mount.Active && Player.mount.Type == RaceMount;
     private bool InEntryArea => FeatureEnabled && Waiting && Player.active && !Player.dead && !Player.ghost &&
         ModContent.GetInstance<RegionManager>().GetRegionContaining(Player.Center.ToTileCoordinates()) != null;
 

@@ -36,8 +36,7 @@ public class SpawnboxMap : ModMapLayer
 
         // Get the spawn region from RegionManager
         var rm = ModContent.GetInstance<RegionManager>();
-        var bgTexture = ModContent.GetInstance<SpawnBoxWorld>()._playerBGTexture;
-        if (rm.Regions.Count == 0 || bgTexture == null)
+        if (rm.Regions.Count == 0)
             return;
 
         Region region = rm.Regions[0];
